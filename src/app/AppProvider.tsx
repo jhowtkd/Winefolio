@@ -13,6 +13,7 @@ import type {
   PhotoChange,
 } from '../domain/wine-entry';
 import { createPreferences } from '../domain/preferences';
+import { motionDataset } from '../domain/motion';
 import { getDemoWines } from '../data/demo-wines';
 import { WinefolioContext, type WinefolioContextValue } from './useWinefolio';
 import { parseHash, formatHash, type AppRoute } from './navigation';
@@ -129,8 +130,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       root.setAttribute('data-textures', 'off');
     }
 
-    if (preferences.motion === 'reduced') {
-      root.setAttribute('data-motion', 'reduce');
+    const motion = motionDataset(preferences.reduceMotion);
+    if (motion) {
+      root.setAttribute('data-motion', motion);
     } else {
       root.removeAttribute('data-motion');
     }
