@@ -14,6 +14,7 @@ import type {
 } from '../domain/wine-entry';
 import { createPreferences } from '../domain/preferences';
 import { motionDataset } from '../domain/motion';
+import { applyDemoFavorites } from '../domain/demo-visibility';
 import { getDemoWines } from '../data/demo-wines';
 import { WinefolioContext, type WinefolioContextValue } from './useWinefolio';
 import { parseHash, formatHash, type AppRoute } from './navigation';
@@ -80,7 +81,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setRepository(repo);
 
       const snapshot = await repo.load();
-      setEntries(snapshot.entries);
+      setEntries(applyDemoFavorites(snapshot.entries, snapshot.preferences.demoFavorites));
       setDraft(snapshot.draft);
       setPreferences(snapshot.preferences);
     } catch (err: any) {
@@ -164,15 +165,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [repository, showToast]
   );
 
+  const updatePreferences = useCallback(
+    async (partial: Partial<Preferences>): Promise<void> => {
+      if (!repository) throw new Error('Repositório não inicializado');
+      const next: Preferences = { ...preferences, ...partial };
+      await repository.savePreferences(next);
+      setPreferences(next);
+      showToast('Preferências salvas.', 'success');
+    },
+    [repository, preferences, showToast]
+  );
+
   const setFavorite = useCallback(
     async (id: string, favorite: boolean, expectedRevision: number): Promise<WineEntry> => {
       if (!repository) throw new Error('Repositório não inicializado');
       const updated = await repository.setFavorite(id, favorite, expectedRevision);
       setEntries((prev) => prev.map((e) => (e.id === id ? updated : e)));
+      if (updated.kind === 'demo') {
+        await updatePreferences({
+          demoFavorites: { ...preferences.demoFavorites, [id]: favorite },
+        });
+      }
       showToast(favorite ? 'Vinho marcado como favorito!' : 'Vinho desmarcado dos favoritos.', 'info');
       return updated;
     },
-    [repository, showToast]
+    [repository, showToast, preferences.demoFavorites, updatePreferences]
   );
 
   const removeEntry = useCallback(
@@ -200,17 +217,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDraft(null);
     showToast('Rascunho descartado.', 'info');
   }, [repository, showToast]);
-
-  const updatePreferences = useCallback(
-    async (partial: Partial<Preferences>): Promise<void> => {
-      if (!repository) throw new Error('Repositório não inicializado');
-      const next: Preferences = { ...preferences, ...partial };
-      await repository.savePreferences(next);
-      setPreferences(next);
-      showToast('Preferências salvas.', 'success');
-    },
-    [repository, preferences, showToast]
-  );
 
   const exportBackup = useCallback(async (): Promise<void> => {
     if (!db) throw new Error('Banco de dados indisponível');
@@ -260,9 +266,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     }
     const reloaded = await repository.load();
-    setEntries(reloaded.entries);
+    setEntries(applyDemoFavorites(reloaded.entries, preferences.demoFavorites));
     showToast('3 fichas de demonstração adicionadas ao seu caderno!', 'success');
-  }, [repository, showToast]);
+  }, [repository, showToast, preferences.demoFavorites]);
 
   const readPhotoBlob = useCallback(
     async (id: string): Promise<Blob | undefined> => {

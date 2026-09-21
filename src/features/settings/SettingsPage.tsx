@@ -240,6 +240,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           como demonstração no seu caderno.
         </p>
 
+        <label className="flex items-center justify-between gap-4 text-xs">
+          <span>
+            <span className="block font-semibold text-[#312d26] dark:text-[#eee7db]">
+              Mostrar fichas de exemplo no caderno
+            </span>
+            <span className="text-[#6b6458] dark:text-[#9e9687]">
+              Desligar esconde os exemplos na adega, no caderno e nas estatísticas. Eles continuam salvos.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={preferences.showDemo !== false}
+            onChange={(e) => onUpdatePreferences({ showDemo: e.target.checked })}
+            className="w-4 h-4 accent-[#793b46]"
+          />
+        </label>
+
         <PaperButton
           variant="secondary"
           onClick={handleLoadDemo}

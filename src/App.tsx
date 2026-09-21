@@ -10,6 +10,7 @@ import { CellarPage } from './features/cellar/CellarPage';
 import { StatsPage } from './features/stats/StatsPage';
 import { EmptyState } from './components/ui/EmptyState';
 import { PaperButton } from './components/ui/PaperButton';
+import { visibleEntries } from './domain/demo-visibility';
 import { Loader2 } from 'lucide-react';
 
 const AppContent: React.FC = () => {
@@ -50,6 +51,8 @@ const AppContent: React.FC = () => {
     );
   }
 
+  const shown = visibleEntries(entries, preferences.showDemo !== false);
+
   // Template para clonar caso seja rota #/novo?from=...
   const templateEntry =
     activeRoute.kind === 'new' && activeRoute.fromTemplateId
@@ -76,7 +79,7 @@ const AppContent: React.FC = () => {
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8 pb-24 md:pb-8">
         {activeRoute.kind === 'journal' && (
           <JournalPage
-            entries={entries}
+            entries={shown}
             readPhoto={readPhotoBlob}
             onSelectEntry={(entry) =>
               navigate({ kind: 'entry', id: entry.id, mode: 'view' })
@@ -191,7 +194,7 @@ const AppContent: React.FC = () => {
 
         {activeRoute.kind === 'cellar' && (
           <CellarPage
-            entries={entries}
+            entries={shown}
             onOpenEntry={(id) => navigate({ kind: 'entry', id, mode: 'view' })}
             onNewEntry={() => navigate({ kind: 'new' })}
             onLoadDemoWines={loadDemoWines}
@@ -200,7 +203,7 @@ const AppContent: React.FC = () => {
 
         {activeRoute.kind === 'stats' && (
           <StatsPage
-            entries={entries}
+            entries={shown}
             onOpenJournal={() => navigate({ kind: 'journal', tab: 'all' })}
           />
         )}
