@@ -9,6 +9,8 @@ import type {
 import { createEntry } from '../../domain/wine-factory';
 import { COUNTRIES, inferCountryCode } from '../../domain/countries';
 import { applyLabelAnalysis } from '../../domain/label-fill';
+import { appendDictation } from '../../domain/dictation';
+import { useSpeechDictation } from './useSpeechDictation';
 import { PaperSurface } from '../../components/ui/PaperSurface';
 import { PaperButton } from '../../components/ui/PaperButton';
 import { InkStamp } from '../../components/ui/InkStamp';
@@ -110,6 +112,16 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
   const existingPhotoUrl = usePhotoUrl(formData.photoId, readPhoto);
   const [currentPhotoPreview, setCurrentPhotoPreview] = useState<string | null>(null);
   const [photoChange, setPhotoChange] = useState<PhotoChange>({ kind: 'keep' });
+
+  const dictation = useSpeechDictation((chunk) =>
+    setFormData((prev) => ({
+      ...prev,
+      conclusao: {
+        ...prev.conclusao!,
+        impressaoFinal: appendDictation(prev.conclusao?.impressaoFinal || '', chunk),
+      },
+    }))
+  );
 
   // Sincroniza preview inicial se não houver foto nova selecionada
   useEffect(() => {
@@ -1136,8 +1148,26 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                  Impressão Final do Sommelier (Manuscrito do Caderno)
+                <label className="flex items-center justify-between text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
+                  <span>Impressão Final do Sommelier (Manuscrito do Caderno)</span>
+                  {dictation.supported && (
+                    <button
+                      type="button"
+                      onClick={dictation.toggle}
+                      aria-label="Ditar impressão final"
+                      className={`p-1.5 rounded-xs border transition-colors ${
+                        dictation.listening
+                          ? 'border-[#793b46] bg-[#793b46] text-[#fffaf0]'
+                          : 'border-[#cfc4b0] dark:border-[#3d362b] text-[#6b6458] dark:text-[#9e9687] hover:text-[#793b46]'
+                      }`}
+                    >
+                      {dictation.listening ? (
+                        <MicOff className="w-3.5 h-3.5" />
+                      ) : (
+                        <Mic className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  )}
                 </label>
                 <textarea
                   rows={4}
@@ -1151,6 +1181,14 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
                   placeholder="Sua memória afetiva, impressão geral do equilíbrio e emoção que o vinho transmitiu..."
                   className="w-full px-3 py-2 text-sm sm:text-base font-hand rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] text-[#312d26] dark:text-[#eee7db] leading-relaxed"
                 />
+                {dictation.interim && (
+                  <p className="mt-1 text-xs italic text-[#6b6458] dark:text-[#9e9687]">
+                    {dictation.interim}
+                  </p>
+                )}
+                {dictation.error && (
+                  <p className="mt-1 text-xs text-[#793b46] dark:text-[#b05e6e]">{dictation.error}</p>
+                )}
               </div>
             </div>
           )}
