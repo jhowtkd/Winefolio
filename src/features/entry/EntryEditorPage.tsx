@@ -7,9 +7,15 @@ import type {
   PhotoChange,
 } from '../../domain/wine-entry';
 import { createEntry } from '../../domain/wine-factory';
+import { COUNTRIES, inferCountryCode } from '../../domain/countries';
+import { applyLabelAnalysis } from '../../domain/label-fill';
+import { appendDictation } from '../../domain/dictation';
+import { useSpeechDictation } from './useSpeechDictation';
 import { PaperSurface } from '../../components/ui/PaperSurface';
 import { PaperButton } from '../../components/ui/PaperButton';
 import { InkStamp } from '../../components/ui/InkStamp';
+import { ModalDialog } from '../../components/proto/ModalDialog';
+import { Icon, Doodle } from '../../components/proto/Sprite';
 import { LabelPhotoCapture } from '../../components/LabelPhotoCapture';
 import { analyzeWineLabelPhoto } from '../../services/wineOcrService';
 import { dataUrlToBlob } from '../../utils/imageUtils';
@@ -109,6 +115,16 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
   const [currentPhotoPreview, setCurrentPhotoPreview] = useState<string | null>(null);
   const [photoChange, setPhotoChange] = useState<PhotoChange>({ kind: 'keep' });
 
+  const dictation = useSpeechDictation((chunk) =>
+    setFormData((prev) => ({
+      ...prev,
+      conclusao: {
+        ...prev.conclusao!,
+        impressaoFinal: appendDictation(prev.conclusao?.impressaoFinal || '', chunk),
+      },
+    }))
+  );
+
   // Sincroniza preview inicial se não houver foto nova selecionada
   useEffect(() => {
     if (existingPhotoUrl && photoChange.kind === 'keep') {
@@ -187,20 +203,7 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
     try {
       const result = await analyzeWineLabelPhoto(photoDataUrl);
       if (result) {
-        setFormData((prev) => {
-          const updated = { ...prev };
-          if (result.produtor && !updated.produtor) updated.produtor = result.produtor;
-          if (result.vinho && !updated.vinho) updated.vinho = result.vinho;
-          if (result.safra && !updated.safra) updated.safra = result.safra;
-          if (result.uvas && !updated.uvas) updated.uvas = result.uvas;
-          if (result.regiaoPais && !updated.regiaoPais) updated.regiaoPais = result.regiaoPais;
-          if (result.tipo) updated.tipo = result.tipo;
-          if (result.estilo) updated.estilo = result.estilo;
-          if (result.alcool && updated.paladar) {
-            updated.paladar.alcool = result.alcool;
-          }
-          return updated;
-        });
+        setFormData((prev) => applyLabelAnalysis(prev, result));
         showToast('Campos do rótulo identificados e preenchidos!', 'success');
       }
     } catch (err: any) {
@@ -232,6 +235,30 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
       showToast('Erro ao salvar: ' + (err.message || 'Falha de concorrência'), 'error');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const closeDialog = () =>
+    onNavigate(isEditingExisting ? `#/ficha/${initialEntry!.id}` : '#/caderno');
+
+  const saveDraftNow = async () => {
+    if (isEditingExisting) return;
+    setDraftStatus('Salvando rascunho...');
+    try {
+      const draft: EntryDraft = {
+        id: 'active',
+        entry: formData,
+        editingId: null,
+        baseRevision: null,
+        updatedAt: Date.now(),
+        photoBlob: photoChange.kind === 'replace' ? photoChange.blob : undefined,
+      };
+      await onSaveDraft(draft, photoChange);
+      const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setDraftStatus(`Rascunho salvo às ${nowStr}`);
+      showToast('Rascunho guardado neste navegador.', 'success');
+    } catch {
+      setDraftStatus('');
     }
   };
 
@@ -272,7 +299,45 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-16">
+    <ModalDialog
+      label={isEditingExisting ? 'Winefolio / editar página' : 'Winefolio / uma nova página'}
+      closeLabel={isEditingExisting ? 'Fechar edição' : 'Fechar registro'}
+      onClose={closeDialog}
+      ariaLabelledBy="entry-title"
+      footer={
+        <>
+          <small>
+            {draftStatus || (
+              <>
+                Uma memória sua.
+                <br />
+                Guardada só neste navegador.
+              </>
+            )}
+          </small>
+          <div className="actions">
+            {!isEditingExisting && (
+              <button type="button" className="text-btn" onClick={saveDraftNow}>
+                Guardar rascunho
+              </button>
+            )}
+            <button
+              type="submit"
+              form="entry-editor-form"
+              className="btn btn-primary"
+              disabled={isSaving}
+            >
+              {isSaving
+                ? 'Guardando...'
+                : isEditingExisting
+                  ? 'Guardar alterações'
+                  : 'Guardar no caderno'}{' '}
+              <Icon name="check" />
+            </button>
+          </div>
+        </>
+      }
+    >
       {/* Banner de Rascunho Não Finalizado */}
       {showDraftBanner && existingDraft && (
         <div className="p-4 rounded-xs border border-amber-300 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200">
@@ -298,33 +363,30 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
         </div>
       )}
 
-      {/* Topo: Navegação e Status */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <button
-          type="button"
-          onClick={() => onNavigate(isEditingExisting ? `#/ficha/${initialEntry!.id}` : '#/caderno')}
-          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-[#6b6458] dark:text-[#9e9687] hover:text-[#312d26] dark:hover:text-[#eee7db]"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          {isEditingExisting ? 'Cancelar Edição' : 'Voltar ao Caderno'}
-        </button>
-
-        <div className="flex items-center gap-3">
-          {draftStatus && (
-            <span className="text-[11px] font-mono-code text-[#6b6458] dark:text-[#9e9687] hidden sm:inline">
-              {draftStatus}
-            </span>
-          )}
-
-          <PaperButton
-            variant="primary"
-            onClick={handleSave}
-            disabled={isSaving}
-            className="!py-2 !px-4 text-xs sm:text-sm font-semibold"
+      <div className="entry-heading">
+        <div>
+          <h2 id="entry-title">
+            {isEditingExisting ? 'Revisitar esta memória?' : 'O que ficou na memória?'}
+          </h2>
+          <p>
+            Uma anotação já é um bom começo. O resto pode esperar.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            aria-label={formData.favorite ? 'Remover dos favoritos' : 'Marcar como favorito'}
+            aria-pressed={Boolean(formData.favorite)}
+            onClick={() => setFormData((p) => ({ ...p, favorite: !p.favorite }))}
+            className={`p-1.5 rounded transition-colors ${
+              formData.favorite
+                ? 'text-[#793b46] bg-[#793b46]/10'
+                : 'text-stone-400 hover:text-stone-700'
+            }`}
           >
-            <Save className="w-4 h-4 mr-1.5" />
-            {isSaving ? 'Salvando...' : isEditingExisting ? 'Salvar Alterações' : 'Concluir Ficha'}
-          </PaperButton>
+            <Star className={`w-5 h-5 ${formData.favorite ? 'fill-current' : ''}`} />
+          </button>
+          <Doodle name="cork" className="doodle" />
         </div>
       </div>
 
@@ -333,31 +395,6 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
         material="sheet"
         className="p-6 sm:p-8 border border-[#cfc4b0] dark:border-[#3d362b] rounded-xs shadow-md space-y-6"
       >
-        <div className="border-b border-[#cfc4b0]/70 dark:border-[#3d362b] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h1 className="font-serif text-2xl font-bold text-[#312d26] dark:text-[#eee7db]">
-              {isEditingExisting ? 'Editar Ficha de Degustação' : 'Nova Ficha de Degustação'}
-            </h1>
-            <p className="text-xs text-[#6b6458] dark:text-[#9e9687]">
-              Preencha os dados do vinho e anote suas percepções visuais, olfativas e gustativas.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-[#6b6458] dark:text-[#9e9687]">Favorito:</span>
-            <button
-              type="button"
-              onClick={() => setFormData((p) => ({ ...p, favorite: !p.favorite }))}
-              className={`p-1.5 rounded transition-colors ${
-                formData.favorite
-                  ? 'text-[#793b46] bg-[#793b46]/10'
-                  : 'text-stone-400 hover:text-stone-700'
-              }`}
-            >
-              <Star className={`w-5 h-5 ${formData.favorite ? 'fill-current' : ''}`} />
-            </button>
-          </div>
-        </div>
 
         {/* Abas das Etapas da Ficha */}
         <div className="flex items-center gap-1 border-b border-[#cfc4b0]/70 dark:border-[#3d362b] overflow-x-auto pb-px text-xs">
@@ -384,7 +421,7 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
         </div>
 
         {/* Conteúdo da Aba Ativa */}
-        <form onSubmit={handleSave} className="space-y-6">
+        <form id="entry-editor-form" onSubmit={handleSave} className="space-y-6">
           {/* ABA 1: GERAL & RÓTULO */}
           {activeTab === 'geral' && (
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
@@ -510,10 +547,44 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
                     <input
                       type="text"
                       value={formData.regiaoPais || ''}
-                      onChange={(e) => setFormData({ ...formData, regiaoPais: e.target.value })}
+                      onChange={(e) => {
+                        const countryCode =
+                          inferCountryCode(e.target.value) ?? formData.origin?.countryCode ?? null;
+                        setFormData({
+                          ...formData,
+                          regiaoPais: e.target.value,
+                          origin: { countryCode, region: e.target.value },
+                        });
+                      }}
                       placeholder="Ex: Vale dos Vinhedos, Brasil"
                       className="w-full px-3 py-2 text-xs sm:text-sm rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] text-[#312d26] dark:text-[#eee7db]"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
+                      País
+                    </label>
+                    <select
+                      value={formData.origin?.countryCode || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          origin: {
+                            countryCode: e.target.value || null,
+                            region: formData.origin?.region || formData.regiaoPais || '',
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-2 text-xs sm:text-sm rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
+                    >
+                      <option value="">Sem país</option>
+                      {COUNTRIES.map((country) => (
+                        <option key={country.code} value={country.code}>
+                          {country.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -1113,8 +1184,26 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                  Impressão Final do Sommelier (Manuscrito do Caderno)
+                <label className="flex items-center justify-between text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
+                  <span>Impressão Final do Sommelier (Manuscrito do Caderno)</span>
+                  {dictation.supported && (
+                    <button
+                      type="button"
+                      onClick={dictation.toggle}
+                      aria-label="Ditar impressão final"
+                      className={`p-1.5 rounded-xs border transition-colors ${
+                        dictation.listening
+                          ? 'border-[#793b46] bg-[#793b46] text-[#fffaf0]'
+                          : 'border-[#cfc4b0] dark:border-[#3d362b] text-[#6b6458] dark:text-[#9e9687] hover:text-[#793b46]'
+                      }`}
+                    >
+                      {dictation.listening ? (
+                        <MicOff className="w-3.5 h-3.5" />
+                      ) : (
+                        <Mic className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  )}
                 </label>
                 <textarea
                   rows={4}
@@ -1128,6 +1217,14 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
                   placeholder="Sua memória afetiva, impressão geral do equilíbrio e emoção que o vinho transmitiu..."
                   className="w-full px-3 py-2 text-sm sm:text-base font-hand rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] text-[#312d26] dark:text-[#eee7db] leading-relaxed"
                 />
+                {dictation.interim && (
+                  <p className="mt-1 text-xs italic text-[#6b6458] dark:text-[#9e9687]">
+                    {dictation.interim}
+                  </p>
+                )}
+                {dictation.error && (
+                  <p className="mt-1 text-xs text-[#793b46] dark:text-[#b05e6e]">{dictation.error}</p>
+                )}
               </div>
             </div>
           )}
@@ -1181,6 +1278,6 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
           </div>
         </form>
       </PaperSurface>
-    </div>
+    </ModalDialog>
   );
 };

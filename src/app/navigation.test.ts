@@ -21,6 +21,10 @@ describe('Navigation Hash Sync Test', () => {
   it('formata rotas de volta para hash URLs idênticas', () => {
     assert.strictEqual(formatHash({ kind: 'journal', tab: 'favorites' }), '#/caderno?aba=favorites');
     assert.strictEqual(formatHash({ kind: 'entry', id: 'wine-456', mode: 'edit' }), '#/ficha/wine-456/editar');
+    assert.strictEqual(formatHash({ kind: 'passport' }), '#/passaporte');
+    assert.strictEqual(formatHash({ kind: 'palate' }), '#/paladar');
+    assert.strictEqual(parseHash('#/passaporte').kind, 'passport');
+    assert.strictEqual(parseHash('#/paladar').kind, 'palate');
     assert.strictEqual(formatHash({ kind: 'cellar' }), '#/adega');
     assert.strictEqual(formatHash({ kind: 'stats' }), '#/estatisticas');
     assert.strictEqual(formatHash({ kind: 'settings' }), '#/ajustes');

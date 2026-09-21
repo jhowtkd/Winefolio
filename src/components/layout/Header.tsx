@@ -1,117 +1,114 @@
 import React from 'react';
 import type { AppRoute } from '../../app/navigation';
-import { BookOpen, Plus, Settings, Sun, Moon, Sparkles } from 'lucide-react';
-import { PaperButton } from '../ui/PaperButton';
+import { Icon, Doodle } from '../proto/Sprite';
 
 interface HeaderProps {
   activeRoute: AppRoute;
-  theme: 'paper' | 'night';
-  onToggleTheme: () => void;
   onNavigate: (hash: string) => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({
-  activeRoute,
-  theme,
-  onToggleTheme,
-  onNavigate,
-}) => {
-  const isJournal = activeRoute.kind === 'journal';
-  const isNew = activeRoute.kind === 'new';
-  const isSettings = activeRoute.kind === 'settings';
+const NAV_ITEMS = [
+  { hash: '#/caderno', label: 'Caderno', icon: 'book', match: 'journal' },
+  { hash: '#/passaporte', label: 'Passaporte', icon: 'passport', match: 'passport' },
+  { hash: '#/paladar', label: 'Meu paladar', icon: 'palate', match: 'palate' },
+] as const;
 
-  return (
-    <header className="sticky top-0 z-40 bg-[#f9f5ed]/95 dark:bg-[#1a1714]/95 backdrop-blur-xs border-b border-[#cfc4b0] dark:border-[#3d362b] shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        {/* Marca / Logotipo */}
-        <div
+/** Cabeçalho e navegação inferior móvel no padrão do protótipo 1.1. */
+export const Header: React.FC<HeaderProps> = ({ activeRoute, onNavigate }) => (
+  <>
+    <div className="topline print:hidden" />
+    <header className="header wrap print:hidden">
+      <div className="header-inner">
+        <button
+          type="button"
+          className="brand"
           onClick={() => onNavigate('#/caderno')}
-          className="flex items-center gap-3 cursor-pointer group select-none"
+          aria-label="Winefolio, voltar ao caderno"
         >
-          <div className="w-10 h-10 rounded-xs bg-[#793b46] text-[#fffaf0] flex items-center justify-center shadow-xs border border-[#5a212d] group-hover:scale-105 transition-transform">
-            <svg
-              viewBox="0 0 70 110"
-              className="w-5 h-7 text-[#efe4c8]"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <use href="/assets/winefolio/illustrations.svg#doodle-cork" />
-            </svg>
-          </div>
-
+          <Doodle name="cork" className="brand-glyph" />
           <div>
-            <div className="flex items-center gap-2">
-              <span className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-[#312d26] dark:text-[#eee7db]">
-                Winefolio
-              </span>
-              <span className="text-[10px] font-mono-code font-bold px-1.5 py-0.5 rounded bg-[#efe4c8] dark:bg-[#2e2820] text-[#793b46] dark:text-[#b05e6e] border border-[#cfc4b0]/70">
-                1.1
-              </span>
+            <div className="brand-name">
+              Winefolio<span>.</span>
             </div>
-            <p className="text-[10px] tracking-widest uppercase text-[#6b6458] dark:text-[#9e9687] font-medium hidden sm:block">
-              Caderno de Degustações
-            </p>
+            <div className="brand-sub">Um caderno de descobertas</div>
           </div>
-        </div>
-
-        {/* Links Centrais de Navegação */}
-        <nav className="flex items-center gap-1 sm:gap-2">
-          <button
-            type="button"
-            onClick={() => onNavigate('#/caderno')}
-            className={`px-3 py-1.5 rounded-xs text-xs sm:text-sm font-medium transition-all ${
-              isJournal
-                ? 'bg-[#eae1cd] dark:bg-[#3d362b] text-[#312d26] dark:text-[#eee7db] font-bold shadow-xs'
-                : 'text-[#6b6458] dark:text-[#9e9687] hover:text-[#312d26] dark:hover:text-[#eee7db] hover:bg-black/5 dark:hover:bg-white/5'
-            }`}
-          >
-            Caderno
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigate('#/novo')}
-            className={`px-3 py-1.5 rounded-xs text-xs sm:text-sm font-medium flex items-center gap-1 transition-all ${
-              isNew
-                ? 'bg-[#793b46] text-[#fffaf0] font-bold shadow-xs'
-                : 'text-[#793b46] dark:text-[#b05e6e] hover:bg-[#793b46]/10'
-            }`}
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Nova Ficha</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigate('#/ajustes')}
-            className={`px-3 py-1.5 rounded-xs text-xs sm:text-sm font-medium flex items-center gap-1 transition-all ${
-              isSettings
-                ? 'bg-[#eae1cd] dark:bg-[#3d362b] text-[#312d26] dark:text-[#eee7db] font-bold shadow-xs'
-                : 'text-[#6b6458] dark:text-[#9e9687] hover:text-[#312d26] dark:hover:text-[#eee7db] hover:bg-black/5 dark:hover:bg-white/5'
-            }`}
-            title="Ajustes e Backup"
-          >
-            <Settings className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Ajustes</span>
-          </button>
-
-          {/* Alternador de Tema Claro / Noturno */}
-          <button
-            type="button"
-            onClick={onToggleTheme}
-            className="p-2 rounded-xs text-[#6b6458] dark:text-[#9e9687] hover:text-[#312d26] dark:hover:text-[#eee7db] hover:bg-black/5 dark:hover:bg-white/5 ml-1 transition-colors"
-            title={theme === 'night' ? 'Mudar para tema claro' : 'Mudar para tema noturno'}
-            aria-label="Alternar tema"
-          >
-            {theme === 'night' ? (
-              <Sun className="w-4 h-4 text-amber-400" />
-            ) : (
-              <Moon className="w-4 h-4 text-[#793b46]" />
-            )}
-          </button>
+        </button>
+        <nav className="nav" aria-label="Principal">
+          {NAV_ITEMS.map((item) => {
+            const active = activeRoute.kind === item.match;
+            return (
+              <button
+                key={item.hash}
+                type="button"
+                className={`nav-btn ${active ? 'active' : ''}`}
+                aria-current={active ? 'page' : undefined}
+                onClick={() => onNavigate(item.hash)}
+              >
+                <Icon name={item.icon} />
+                {item.label}
+              </button>
+            );
+          })}
         </nav>
+        <div className="header-actions">
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => onNavigate('#/novo')}
+          >
+            <Icon name="plus" />
+            Registrar vinho
+          </button>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Opções do caderno"
+            title="Opções do caderno"
+            onClick={() => onNavigate('#/ajustes')}
+          >
+            <Icon name="more" />
+          </button>
+        </div>
       </div>
     </header>
-  );
-};
+    <nav className="mobile-nav print:hidden" aria-label="Navegação móvel">
+      {NAV_ITEMS.slice(0, 2).map((item) => {
+        const active = activeRoute.kind === item.match;
+        return (
+          <button
+            key={item.hash}
+            type="button"
+            className={active ? 'active' : ''}
+            aria-current={active ? 'page' : undefined}
+            onClick={() => onNavigate(item.hash)}
+          >
+            <Icon name={item.icon} />
+            {item.label}
+          </button>
+        );
+      })}
+      <button
+        type="button"
+        className="new-mobile"
+        aria-label="Registrar vinho"
+        onClick={() => onNavigate('#/novo')}
+      >
+        <Icon name="plus" />
+        <span>Anotar</span>
+      </button>
+      <button
+        type="button"
+        className={activeRoute.kind === 'palate' ? 'active' : ''}
+        aria-current={activeRoute.kind === 'palate' ? 'page' : undefined}
+        onClick={() => onNavigate('#/paladar')}
+      >
+        <Icon name="palate" />
+        Meu paladar
+      </button>
+      <button type="button" onClick={() => onNavigate('#/ajustes')}>
+        <Icon name="more" />
+        Opções
+      </button>
+    </nav>
+  </>
+);

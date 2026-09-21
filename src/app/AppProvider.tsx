@@ -13,10 +13,13 @@ import type {
   PhotoChange,
 } from '../domain/wine-entry';
 import { createPreferences } from '../domain/preferences';
+import { motionDataset } from '../domain/motion';
+import { applyDemoFavorites } from '../domain/demo-visibility';
 import { getDemoWines } from '../data/demo-wines';
 import { WinefolioContext, type WinefolioContextValue } from './useWinefolio';
 import { parseHash, formatHash, type AppRoute } from './navigation';
 import { RecoveryScreen } from './RecoveryScreen';
+import { Icon } from '../components/proto/Sprite';
 
 interface ToastState {
   id: number;
@@ -79,7 +82,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setRepository(repo);
 
       const snapshot = await repo.load();
-      setEntries(snapshot.entries);
+      setEntries(applyDemoFavorites(snapshot.entries, snapshot.preferences.demoFavorites));
       setDraft(snapshot.draft);
       setPreferences(snapshot.preferences);
     } catch (err: any) {
@@ -123,16 +126,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem('wine_sommelier_night_mode', 'light');
     }
 
+    const body = document.body;
     if (preferences.textures) {
       root.removeAttribute('data-textures');
+      body.classList.remove('flat');
     } else {
       root.setAttribute('data-textures', 'off');
+      body.classList.add('flat');
     }
 
-    if (preferences.motion === 'reduced') {
-      root.setAttribute('data-motion', 'reduce');
+    const motion = motionDataset(preferences.reduceMotion);
+    if (motion) {
+      root.setAttribute('data-motion', motion);
+      body.classList.add('minimal-motion');
     } else {
       root.removeAttribute('data-motion');
+      body.classList.remove('minimal-motion');
     }
   }, [preferences]);
 
@@ -162,15 +171,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [repository, showToast]
   );
 
+  const updatePreferences = useCallback(
+    async (partial: Partial<Preferences>): Promise<void> => {
+      if (!repository) throw new Error('Repositório não inicializado');
+      const next: Preferences = { ...preferences, ...partial };
+      await repository.savePreferences(next);
+      setPreferences(next);
+      showToast('Preferências salvas.', 'success');
+    },
+    [repository, preferences, showToast]
+  );
+
   const setFavorite = useCallback(
     async (id: string, favorite: boolean, expectedRevision: number): Promise<WineEntry> => {
       if (!repository) throw new Error('Repositório não inicializado');
       const updated = await repository.setFavorite(id, favorite, expectedRevision);
       setEntries((prev) => prev.map((e) => (e.id === id ? updated : e)));
+      if (updated.kind === 'demo') {
+        await updatePreferences({
+          demoFavorites: { ...preferences.demoFavorites, [id]: favorite },
+        });
+      }
       showToast(favorite ? 'Vinho marcado como favorito!' : 'Vinho desmarcado dos favoritos.', 'info');
       return updated;
     },
-    [repository, showToast]
+    [repository, showToast, preferences.demoFavorites, updatePreferences]
   );
 
   const removeEntry = useCallback(
@@ -198,17 +223,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDraft(null);
     showToast('Rascunho descartado.', 'info');
   }, [repository, showToast]);
-
-  const updatePreferences = useCallback(
-    async (partial: Partial<Preferences>): Promise<void> => {
-      if (!repository) throw new Error('Repositório não inicializado');
-      const next: Preferences = { ...preferences, ...partial };
-      await repository.savePreferences(next);
-      setPreferences(next);
-      showToast('Preferências salvas.', 'success');
-    },
-    [repository, preferences, showToast]
-  );
 
   const exportBackup = useCallback(async (): Promise<void> => {
     if (!db) throw new Error('Banco de dados indisponível');
@@ -258,9 +272,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     }
     const reloaded = await repository.load();
-    setEntries(reloaded.entries);
-    showToast('3 fichas de demonstração adicionadas ao seu caderno!', 'success');
-  }, [repository, showToast]);
+    setEntries(applyDemoFavorites(reloaded.entries, preferences.demoFavorites));
+    showToast('6 fichas de exemplo adicionadas ao seu caderno!', 'success');
+  }, [repository, showToast, preferences.demoFavorites]);
 
   const readPhotoBlob = useCallback(
     async (id: string): Promise<Blob | undefined> => {
@@ -332,22 +346,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <WinefolioContext.Provider value={contextValue}>
       {children}
 
-      {/* Notificação Toast Flutuante */}
+      {/* Notificação Toast no padrão do protótipo */}
       {toast && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 animate-toast">
-          <div
-            className={`px-4 py-2.5 rounded-xs border shadow-lg text-xs sm:text-sm font-medium flex items-center gap-2 ${
-              toast.type === 'success'
-                ? 'bg-[#5d6b4f] text-[#fffaf0] border-[#4a563f]'
-                : toast.type === 'error'
-                ? 'bg-red-800 text-white border-red-950'
-                : toast.type === 'warn'
-                ? 'bg-amber-800 text-white border-amber-950'
-                : 'bg-[#793b46] text-[#fffaf0] border-[#5c2733]'
-            }`}
-          >
-            <span>{toast.message}</span>
+        <div className="toast" role="status" aria-live="polite">
+          <Icon name={toast.type === 'success' ? 'check' : 'info'} />
+          <div>
+            <strong>{toast.message}</strong>
           </div>
+          <button type="button" aria-label="Fechar aviso" onClick={() => setToast(null)}>
+            <Icon name="close" />
+          </button>
         </div>
       )}
     </WinefolioContext.Provider>

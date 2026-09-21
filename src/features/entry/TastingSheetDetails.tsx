@@ -3,9 +3,11 @@ import type { WineEntry } from '../../domain/wine-entry';
 import { PaperSurface } from '../../components/ui/PaperSurface';
 import { PaperButton } from '../../components/ui/PaperButton';
 import { InkStamp } from '../../components/ui/InkStamp';
+import { ModalDialog } from '../../components/proto/ModalDialog';
 import { WineGlassVisual } from '../../components/WineGlassVisual';
+import { SensoryRadar } from './SensoryRadar';
 import { usePhotoUrl } from '../journal/usePhotoUrl';
-import { DemoBottleArt } from '../journal/DemoBottleArt';
+import { BottleArt } from '../../components/proto/BottleArt';
 import {
   ArrowLeft,
   Edit2,
@@ -51,18 +53,14 @@ export const TastingSheetDetails: React.FC<TastingSheetDetailsProps> = ({
   const stars = entry.conclusao?.avaliacaoEstrelas ?? null;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-12 print:p-0 print:m-0 print:max-w-none">
-      {/* Barra Superior de Navegação e Ações (Oculta na Impressão) */}
-      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-[#6b6458] dark:text-[#9e9687] hover:text-[#312d26] dark:hover:text-[#eee7db] transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Voltar ao Caderno
-        </button>
-
+    <ModalDialog
+      label="Winefolio / página do caderno"
+      closeLabel="Fechar ficha"
+      onClose={onBack}
+    >
+      <div className="space-y-6 print:p-0 print:m-0">
+      {/* Ações da Página (Ocultas na Impressão) */}
+      <div className="flex flex-wrap items-center justify-end gap-3 print:hidden">
         <div className="flex items-center gap-2 flex-wrap">
           <PaperButton
             variant="secondary"
@@ -223,12 +221,7 @@ export const TastingSheetDetails: React.FC<TastingSheetDetailsProps> = ({
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <DemoBottleArt
-                    tipo={entry.tipo}
-                    estilo={entry.estilo}
-                    corHex={entry.visual?.corHex}
-                    className="h-full"
-                  />
+                  <BottleArt entry={entry} />
                 )}
               </div>
               <p className="text-[10px] font-mono-code text-[#6b6458] dark:text-[#9e9687]">
@@ -446,6 +439,12 @@ export const TastingSheetDetails: React.FC<TastingSheetDetailsProps> = ({
                 </div>
               </div>
 
+              <SensoryRadar
+                paladar={entry.paladar}
+                estilo={entry.estilo}
+                corHex={entry.visual?.corHex}
+              />
+
               {entry.paladar?.aromasBoca && (
                 <div className="text-xs pt-1 border-t border-[#cfc4b0]/30">
                   <span className="text-[#6b6458] dark:text-[#9e9687] text-[10px] uppercase block">
@@ -531,6 +530,7 @@ export const TastingSheetDetails: React.FC<TastingSheetDetailsProps> = ({
           </PaperSurface>
         </div>
       )}
-    </div>
+      </div>
+    </ModalDialog>
   );
 };

@@ -1,4 +1,5 @@
 import type { WineEntry } from './wine-entry';
+import { countryName } from './countries';
 
 export type CollectionTab = 'all' | 'favorites' | 'sparkling';
 export type SortOption = 'date-desc' | 'date-asc' | 'rating-desc' | 'name-asc' | 'vintage-desc';
@@ -9,6 +10,8 @@ export interface FilterOptions {
   style?: string; // 'all' | 'tinto' | 'branco' | 'rose' | 'espumante'
   country?: string;
   vintage?: string;
+  rating?: 'all' | 1 | 2 | 3 | 4 | 5;
+  tag?: string;
   sortBy?: SortOption;
 }
 
@@ -28,6 +31,8 @@ export function filterAndSortEntries(entries: WineEntry[], options: FilterOption
     style = 'all',
     country = 'all',
     vintage = 'all',
+    rating = 'all',
+    tag = '',
     sortBy = 'date-desc',
   } = options;
 
@@ -58,6 +63,18 @@ export function filterAndSortEntries(entries: WineEntry[], options: FilterOption
       if ((entry.safra || '').trim() !== vintage) return false;
     }
 
+    // Nota
+    if (rating !== 'all') {
+      if (entry.conclusao?.avaliacaoEstrelas !== rating) return false;
+    }
+
+    // Tag
+    if (tag.trim()) {
+      const wanted = tag.trim().toLowerCase();
+      const tags = (entry.tags || []).map((t) => t.toLowerCase());
+      if (!tags.includes(wanted)) return false;
+    }
+
     // Texto de busca
     if (q) {
       const haystack = [
@@ -68,6 +85,8 @@ export function filterAndSortEntries(entries: WineEntry[], options: FilterOption
         entry.safra,
         entry.origin?.region,
         entry.conclusao?.impressaoFinal,
+        entry.occasion,
+        entry.origin?.countryCode ? countryName(entry.origin.countryCode) : '',
         ...(entry.aromaTags || []),
         ...(entry.tags || []),
       ]
