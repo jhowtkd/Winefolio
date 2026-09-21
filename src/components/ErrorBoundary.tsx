@@ -1,6 +1,5 @@
 import React, { ErrorInfo, ReactNode } from 'react';
-import { Wine, RotateCcw, AlertTriangle } from 'lucide-react';
-import { INITIAL_WINES } from '../data/sommelierData';
+import { Wine, AlertTriangle } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
@@ -32,15 +31,6 @@ export class ErrorBoundary extends React.Component<Props, State> {
     console.error('Uncaught error in Wine Sommelier App:', error, errorInfo);
   }
 
-  private handleReset = () => {
-    try {
-      localStorage.setItem('sommelier_wine_sheets_v1', JSON.stringify(INITIAL_WINES));
-    } catch {
-      // ignore
-    }
-    window.location.reload();
-  };
-
   private handleReload = () => {
     window.location.reload();
   };
@@ -70,21 +60,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <div className="pt-2">
               <button
                 type="button"
                 onClick={this.handleReload}
-                className="flex-1 px-4 py-2.5 bg-rose-900 hover:bg-rose-950 text-white rounded-xl text-sm font-semibold transition cursor-pointer shadow-sm"
+                className="w-full px-4 py-2.5 bg-rose-900 hover:bg-rose-950 text-white rounded-xl text-sm font-semibold transition cursor-pointer shadow-sm"
               >
-                Recarregar Página
-              </button>
-              <button
-                type="button"
-                onClick={this.handleReset}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-[#252A37] dark:hover:bg-[#303646] text-stone-700 dark:text-stone-200 rounded-xl text-sm font-semibold transition cursor-pointer border border-stone-200 dark:border-[#353B4B]"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Restaurar Dados
+                Recarregar página
               </button>
             </div>
           </div>

@@ -6,6 +6,8 @@ import { JournalPage } from './features/journal/JournalPage';
 import { TastingSheetDetails } from './features/entry/TastingSheetDetails';
 import { EntryEditorPage } from './features/entry/EntryEditorPage';
 import { SettingsPage } from './features/settings/SettingsPage';
+import { CellarPage } from './features/cellar/CellarPage';
+import { StatsPage } from './features/stats/StatsPage';
 import { EmptyState } from './components/ui/EmptyState';
 import { PaperButton } from './components/ui/PaperButton';
 import { Loader2 } from 'lucide-react';
@@ -71,7 +73,7 @@ const AppContent: React.FC = () => {
       />
 
       {/* Conteúdo Central Conforme Rota Hash */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8 pb-24 md:pb-8">
         {activeRoute.kind === 'journal' && (
           <JournalPage
             entries={entries}
@@ -187,6 +189,22 @@ const AppContent: React.FC = () => {
           />
         )}
 
+        {activeRoute.kind === 'cellar' && (
+          <CellarPage
+            entries={entries}
+            onOpenEntry={(id) => navigate({ kind: 'entry', id, mode: 'view' })}
+            onNewEntry={() => navigate({ kind: 'new' })}
+            onLoadDemoWines={loadDemoWines}
+          />
+        )}
+
+        {activeRoute.kind === 'stats' && (
+          <StatsPage
+            entries={entries}
+            onOpenJournal={() => navigate({ kind: 'journal', tab: 'all' })}
+          />
+        )}
+
         {activeRoute.kind === 'settings' && (
           <SettingsPage
             preferences={preferences}
@@ -203,7 +221,7 @@ const AppContent: React.FC = () => {
       </main>
 
       {/* Rodapé discreto no estilo caderno */}
-      <footer className="border-t border-[#cfc4b0]/40 dark:border-[#3d362b] py-6 px-4 text-center text-[11px] text-[#6b6458] dark:text-[#9e9687] print:hidden">
+      <footer className="border-t border-[#cfc4b0]/40 dark:border-[#3d362b] py-6 px-4 mb-16 md:mb-0 text-center text-[11px] text-[#6b6458] dark:text-[#9e9687] print:hidden">
         <p>
           Winefolio 1.1 • Caderno de Degustações de Vinhos & Sommelier Digital • 100% Local & Seguro
         </p>

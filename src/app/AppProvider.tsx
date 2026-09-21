@@ -334,7 +334,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       {/* Notificação Toast Flutuante */}
       {toast && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 animate-toast">
+        <div className="fixed bottom-20 md:bottom-5 left-1/2 -translate-x-1/2 z-50 animate-toast">
           <div
             className={`px-4 py-2.5 rounded-xs border shadow-lg text-xs sm:text-sm font-medium flex items-center gap-2 ${
               toast.type === 'success'
