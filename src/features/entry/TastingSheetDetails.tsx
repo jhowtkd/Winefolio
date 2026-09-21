@@ -4,6 +4,7 @@ import { PaperSurface } from '../../components/ui/PaperSurface';
 import { PaperButton } from '../../components/ui/PaperButton';
 import { InkStamp } from '../../components/ui/InkStamp';
 import { WineGlassVisual } from '../../components/WineGlassVisual';
+import { SensoryRadar } from './SensoryRadar';
 import { usePhotoUrl } from '../journal/usePhotoUrl';
 import { DemoBottleArt } from '../journal/DemoBottleArt';
 import {
@@ -445,6 +446,12 @@ export const TastingSheetDetails: React.FC<TastingSheetDetailsProps> = ({
                   <span className="font-medium">{entry.paladar?.persistencia || '—'}</span>
                 </div>
               </div>
+
+              <SensoryRadar
+                paladar={entry.paladar}
+                estilo={entry.estilo}
+                corHex={entry.visual?.corHex}
+              />
 
               {entry.paladar?.aromasBoca && (
                 <div className="text-xs pt-1 border-t border-[#cfc4b0]/30">
