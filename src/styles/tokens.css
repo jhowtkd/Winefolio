@@ -1,0 +1,37 @@
+:root {
+  --paper: #f2ecdf;
+  --sheet: #fffaf0;
+  --ink: #312d26;
+  --muted: #6b6458;
+  --line: #cfc4b0;
+  --wine: #793b46;
+  --wine-dark: #5c2733;
+  --sage: #5d6b4f;
+  --kraft: #d8be91;
+  --terracotta: #b3674c;
+  --sans: 'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  --serif: 'Fraunces', 'Cinzel', 'EB Garamond', Georgia, serif;
+  --hand: 'Caveat', 'Bradley Hand', 'Comic Neue', 'Segoe Print', cursive;
+  --mono: 'DM Mono', 'Cousine', monospace;
+  --noise: url('/assets/winefolio/paper-grain.png');
+  --shadow: 0 1px 2px #3b301216, 0 6px 15px #3b30120c;
+  --ease: cubic-bezier(0.22, 0.68, 0, 1.02);
+}
+
+html.dark {
+  --paper: #1c1916;
+  --sheet: #25221d;
+  --ink: #eee7db;
+  --muted: #a89f90;
+  --line: #3f382f;
+  --wine: #b05e6e;
+  --wine-dark: #8c3b4a;
+  --sage: #8b9c79;
+  --kraft: #4e4030;
+  --terracotta: #c97c62;
+  --shadow: 0 1px 3px #0000004d, 0 8px 18px #00000066;
+}
+
+[data-textures='off'] {
+  --noise: none !important;
+}

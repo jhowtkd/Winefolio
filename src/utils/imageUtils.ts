@@ -102,3 +102,11 @@ export function captureVideoFrame(
 
   return canvas.toDataURL('image/jpeg', quality);
 }
+
+/**
+ * Converte data URL ou object URL em Blob seguro para IndexedDB
+ */
+export async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
+  const res = await fetch(dataUrl);
+  return res.blob();
+}
