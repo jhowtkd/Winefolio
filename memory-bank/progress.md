@@ -12,3 +12,4 @@
 
 - Estoque real de garrafas (quantidade comprada, localização, consumo)
 - O plano local `Winefolio-Implementacao` não pôde ser lido
+- Ditado, radar de paladar, filtro por nota e tag, código de país no editor, leitura completa do rótulo, movimento reduzido de fato, e ocultar exemplos. O plano está escrito e ainda não foi executado.
