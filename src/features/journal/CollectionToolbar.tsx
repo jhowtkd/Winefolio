@@ -18,6 +18,11 @@ interface CollectionToolbarProps {
   availableStyles: string[];
   selectedStyle: string;
   onStyleChange: (style: string) => void;
+  selectedRating: 'all' | 1 | 2 | 3 | 4 | 5;
+  onRatingChange: (rating: 'all' | 1 | 2 | 3 | 4 | 5) => void;
+  availableTags: string[];
+  selectedTag: string;
+  onTagChange: (tag: string) => void;
   totalFiltered: number;
   totalAll: number;
   onNewEntry: () => void;
@@ -38,6 +43,11 @@ export const CollectionToolbar: React.FC<CollectionToolbarProps> = ({
   availableStyles,
   selectedStyle,
   onStyleChange,
+  selectedRating,
+  onRatingChange,
+  availableTags,
+  selectedTag,
+  onTagChange,
   totalFiltered,
   totalAll,
   onNewEntry,
@@ -146,7 +156,11 @@ export const CollectionToolbar: React.FC<CollectionToolbarProps> = ({
             type="button"
             onClick={() => setShowFilters(!showFilters)}
             className={`p-2 rounded border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] text-xs font-medium flex items-center gap-1.5 ${
-              showFilters || selectedCountry !== 'all' || selectedStyle !== 'all'
+              showFilters ||
+              selectedCountry !== 'all' ||
+              selectedStyle !== 'all' ||
+              selectedRating !== 'all' ||
+              selectedTag !== ''
                 ? 'text-[#793b46] border-[#793b46]'
                 : 'text-[#6b6458] dark:text-[#9e9687]'
             }`}
@@ -221,13 +235,58 @@ export const CollectionToolbar: React.FC<CollectionToolbarProps> = ({
             </select>
           </div>
 
+          {/* Filtro por Nota */}
+          <div className="flex items-center gap-1.5">
+            <span className="font-medium text-[#6b6458] dark:text-[#9e9687]">Nota:</span>
+            <select
+              value={selectedRating}
+              onChange={(e) =>
+                onRatingChange(
+                  e.target.value === 'all'
+                    ? 'all'
+                    : (Number(e.target.value) as 1 | 2 | 3 | 4 | 5)
+                )
+              }
+              className="py-1 px-2 rounded border border-[#cfc4b0] dark:border-[#3d362b] bg-white dark:bg-[#1a1714] text-[#312d26] dark:text-[#eee7db] text-xs focus:outline-hidden"
+            >
+              <option value="all">Todas as notas</option>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <option key={n} value={n}>
+                  {n} {n === 1 ? 'estrela' : 'estrelas'}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filtro por Tag */}
+          <div className="flex items-center gap-1.5">
+            <span className="font-medium text-[#6b6458] dark:text-[#9e9687]">Tag:</span>
+            <select
+              value={selectedTag}
+              onChange={(e) => onTagChange(e.target.value)}
+              className="py-1 px-2 rounded border border-[#cfc4b0] dark:border-[#3d362b] bg-white dark:bg-[#1a1714] text-[#312d26] dark:text-[#eee7db] text-xs focus:outline-hidden"
+            >
+              <option value="">Todas as tags</option>
+              {availableTags.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Limpar filtros */}
-          {(selectedCountry !== 'all' || selectedStyle !== 'all') && (
+          {(selectedCountry !== 'all' ||
+            selectedStyle !== 'all' ||
+            selectedRating !== 'all' ||
+            selectedTag !== '') && (
             <button
               type="button"
               onClick={() => {
                 onCountryChange('all');
                 onStyleChange('all');
+                onRatingChange('all');
+                onTagChange('');
               }}
               className="text-[#793b46] dark:text-[#b05e6e] font-medium hover:underline ml-auto"
             >

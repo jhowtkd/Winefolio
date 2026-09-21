@@ -47,6 +47,8 @@ export const JournalPage: React.FC<JournalPageProps> = ({
   const [selectedCountry, setSelectedCountry] = useState('all');
   const [selectedStyle, setSelectedStyle] = useState('all');
   const [selectedAroma, setSelectedAroma] = useState('');
+  const [selectedRating, setSelectedRating] = useState<'all' | 1 | 2 | 3 | 4 | 5>('all');
+  const [selectedTag, setSelectedTag] = useState('');
 
   // Dialogo de exclusão
   const [deletingEntry, setDeletingEntry] = useState<WineEntry | null>(null);
@@ -70,6 +72,17 @@ export const JournalPage: React.FC<JournalPageProps> = ({
     return Array.from(set).sort();
   }, [entries]);
 
+  const availableTags = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const e of entries) {
+      for (const tag of e.tags || []) {
+        const clean = tag.trim();
+        if (clean && !seen.has(clean.toLowerCase())) seen.set(clean.toLowerCase(), clean);
+      }
+    }
+    return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+  }, [entries]);
+
   // Filtro combinado incluindo o aroma selecionado se houver
   const filteredEntries = useMemo(() => {
     let result = filterAndSortEntries(entries, {
@@ -77,6 +90,8 @@ export const JournalPage: React.FC<JournalPageProps> = ({
       tab: activeTab,
       style: selectedStyle,
       country: selectedCountry,
+      rating: selectedRating,
+      tag: selectedTag,
       sortBy,
     });
 
@@ -87,7 +102,17 @@ export const JournalPage: React.FC<JournalPageProps> = ({
     }
 
     return result;
-  }, [entries, searchQuery, activeTab, selectedStyle, selectedCountry, sortBy, selectedAroma]);
+  }, [
+    entries,
+    searchQuery,
+    activeTab,
+    selectedStyle,
+    selectedCountry,
+    selectedRating,
+    selectedTag,
+    sortBy,
+    selectedAroma,
+  ]);
 
   const stats = useMemo(() => getCollectionStats(entries), [entries]);
   const aromaFrequencies = useMemo(() => getAromaFrequencies(entries), [entries]);
@@ -124,6 +149,11 @@ export const JournalPage: React.FC<JournalPageProps> = ({
         availableStyles={availableStyles}
         selectedStyle={selectedStyle}
         onStyleChange={setSelectedStyle}
+        selectedRating={selectedRating}
+        onRatingChange={setSelectedRating}
+        availableTags={availableTags}
+        selectedTag={selectedTag}
+        onTagChange={setSelectedTag}
         totalFiltered={filteredEntries.length}
         totalAll={entries.length}
         onNewEntry={onNewEntry}
@@ -164,6 +194,8 @@ export const JournalPage: React.FC<JournalPageProps> = ({
                 setSelectedCountry('all');
                 setSelectedStyle('all');
                 setSelectedAroma('');
+                setSelectedRating('all');
+                setSelectedTag('');
               }}
             >
               Limpar todos os filtros

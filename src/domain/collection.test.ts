@@ -21,6 +21,20 @@ describe('Collection domain tests', () => {
     assert.strictEqual(results[0].produtor, 'Domaine Laroche');
   });
 
+  it('filtra por nota exata e por tag', () => {
+    const five = filterAndSortEntries(demos, { rating: 5 });
+    assert.strictEqual(five.length, 1);
+    assert.strictEqual(five[0].vinho, 'Malbec Argentino');
+
+    const tagged = demos.map((entry, index) =>
+      index === 0 ? { ...entry, tags: ['Presente'] } : entry
+    );
+    const byTag = filterAndSortEntries(tagged, { tag: 'presente' });
+    assert.strictEqual(byTag.length, 1);
+    assert.strictEqual(byTag[0].id, tagged[0].id);
+    assert.strictEqual(filterAndSortEntries(tagged, { tag: '' }).length, 3);
+  });
+
   it('calcula estatísticas resumidas com precisão', () => {
     const stats = getCollectionStats(demos);
     assert.strictEqual(stats.total, 3);
