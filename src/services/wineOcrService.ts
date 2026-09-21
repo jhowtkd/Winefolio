@@ -1,21 +1,6 @@
-export interface AnalyzedWineLabel {
-  produtor: string;
-  vinho: string;
-  safra?: string;
-  uvas?: string;
-  regiaoPais?: string;
-  tipo?: 'tranquilo' | 'espumante' | 'licoroso' | 'fortificado' | 'sobremesa';
-  estilo?: 'tinto' | 'branco' | 'rose';
-  alcool?: string;
-  temperaturaServico?: string;
-  decantacao?: string;
-  potencialGuarda?: string;
-  aromasSugeridos?: string;
-  harmonizacaoSugerida?: string;
-  qualidadeEstimada?: string;
-  corHexSugerida?: string;
-  resumo?: string;
-}
+import type { LabelAnalysis } from '../domain/label-fill';
+
+export type AnalyzedWineLabel = LabelAnalysis;
 
 export async function analyzeWineLabelPhoto(imageBase64: string): Promise<AnalyzedWineLabel> {
   const response = await fetch('/api/analyze-wine-label', {

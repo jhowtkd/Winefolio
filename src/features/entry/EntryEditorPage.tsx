@@ -8,6 +8,7 @@ import type {
 } from '../../domain/wine-entry';
 import { createEntry } from '../../domain/wine-factory';
 import { COUNTRIES, inferCountryCode } from '../../domain/countries';
+import { applyLabelAnalysis } from '../../domain/label-fill';
 import { PaperSurface } from '../../components/ui/PaperSurface';
 import { PaperButton } from '../../components/ui/PaperButton';
 import { InkStamp } from '../../components/ui/InkStamp';
@@ -188,20 +189,7 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
     try {
       const result = await analyzeWineLabelPhoto(photoDataUrl);
       if (result) {
-        setFormData((prev) => {
-          const updated = { ...prev };
-          if (result.produtor && !updated.produtor) updated.produtor = result.produtor;
-          if (result.vinho && !updated.vinho) updated.vinho = result.vinho;
-          if (result.safra && !updated.safra) updated.safra = result.safra;
-          if (result.uvas && !updated.uvas) updated.uvas = result.uvas;
-          if (result.regiaoPais && !updated.regiaoPais) updated.regiaoPais = result.regiaoPais;
-          if (result.tipo) updated.tipo = result.tipo;
-          if (result.estilo) updated.estilo = result.estilo;
-          if (result.alcool && updated.paladar) {
-            updated.paladar.alcool = result.alcool;
-          }
-          return updated;
-        });
+        setFormData((prev) => applyLabelAnalysis(prev, result));
         showToast('Campos do rótulo identificados e preenchidos!', 'success');
       }
     } catch (err: any) {
