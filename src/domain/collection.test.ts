@@ -11,20 +11,18 @@ describe('Collection domain tests', () => {
     assert.strictEqual(favorites.length, 2);
 
     const sparkling = filterAndSortEntries(demos, { tab: 'sparkling' });
-    assert.strictEqual(sparkling.length, 1);
-    assert.strictEqual(sparkling[0].vinho, 'Brut 24 Meses');
+    assert.strictEqual(sparkling.length, 0);
   });
 
   it('filtra por texto de busca com correspondência ampla', () => {
-    const results = filterAndSortEntries(demos, { query: 'borgonha' });
+    const results = filterAndSortEntries(demos, { query: 'douro' });
     assert.strictEqual(results.length, 1);
-    assert.strictEqual(results[0].produtor, 'Domaine Laroche');
+    assert.strictEqual(results[0].produtor, 'Quinta do Vento');
   });
 
   it('filtra por nota exata e por tag', () => {
     const five = filterAndSortEntries(demos, { rating: 5 });
-    assert.strictEqual(five.length, 1);
-    assert.strictEqual(five[0].vinho, 'Malbec Argentino');
+    assert.strictEqual(five.length, 2);
 
     const tagged = demos.map((entry, index) =>
       index === 0 ? { ...entry, tags: ['Presente'] } : entry
@@ -32,15 +30,15 @@ describe('Collection domain tests', () => {
     const byTag = filterAndSortEntries(tagged, { tag: 'presente' });
     assert.strictEqual(byTag.length, 1);
     assert.strictEqual(byTag[0].id, tagged[0].id);
-    assert.strictEqual(filterAndSortEntries(tagged, { tag: '' }).length, 3);
+    assert.strictEqual(filterAndSortEntries(tagged, { tag: '' }).length, 6);
   });
 
   it('calcula estatísticas resumidas com precisão', () => {
     const stats = getCollectionStats(demos);
-    assert.strictEqual(stats.total, 3);
+    assert.strictEqual(stats.total, 6);
     assert.strictEqual(stats.favorites, 2);
-    assert.strictEqual(stats.countriesCount, 3); // AR, BR, FR
-    assert.ok(stats.distinctGrapesCount >= 4);
+    assert.strictEqual(stats.countriesCount, 4); // PT, AR, FR, BR
+    assert.ok(stats.distinctGrapesCount >= 6);
     assert.ok(stats.averageRating !== null && stats.averageRating >= 4);
   });
 

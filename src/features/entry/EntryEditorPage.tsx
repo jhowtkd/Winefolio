@@ -14,6 +14,8 @@ import { useSpeechDictation } from './useSpeechDictation';
 import { PaperSurface } from '../../components/ui/PaperSurface';
 import { PaperButton } from '../../components/ui/PaperButton';
 import { InkStamp } from '../../components/ui/InkStamp';
+import { ModalDialog } from '../../components/proto/ModalDialog';
+import { Icon, Doodle } from '../../components/proto/Sprite';
 import { LabelPhotoCapture } from '../../components/LabelPhotoCapture';
 import { analyzeWineLabelPhoto } from '../../services/wineOcrService';
 import { dataUrlToBlob } from '../../utils/imageUtils';
@@ -236,6 +238,30 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
     }
   };
 
+  const closeDialog = () =>
+    onNavigate(isEditingExisting ? `#/ficha/${initialEntry!.id}` : '#/caderno');
+
+  const saveDraftNow = async () => {
+    if (isEditingExisting) return;
+    setDraftStatus('Salvando rascunho...');
+    try {
+      const draft: EntryDraft = {
+        id: 'active',
+        entry: formData,
+        editingId: null,
+        baseRevision: null,
+        updatedAt: Date.now(),
+        photoBlob: photoChange.kind === 'replace' ? photoChange.blob : undefined,
+      };
+      await onSaveDraft(draft, photoChange);
+      const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setDraftStatus(`Rascunho salvo às ${nowStr}`);
+      showToast('Rascunho guardado neste navegador.', 'success');
+    } catch {
+      setDraftStatus('');
+    }
+  };
+
   // Adição de Tags
   const handleAddTag = () => {
     const clean = tagInput.trim();
@@ -273,7 +299,45 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-16">
+    <ModalDialog
+      label={isEditingExisting ? 'Winefolio / editar página' : 'Winefolio / uma nova página'}
+      closeLabel={isEditingExisting ? 'Fechar edição' : 'Fechar registro'}
+      onClose={closeDialog}
+      ariaLabelledBy="entry-title"
+      footer={
+        <>
+          <small>
+            {draftStatus || (
+              <>
+                Uma memória sua.
+                <br />
+                Guardada só neste navegador.
+              </>
+            )}
+          </small>
+          <div className="actions">
+            {!isEditingExisting && (
+              <button type="button" className="text-btn" onClick={saveDraftNow}>
+                Guardar rascunho
+              </button>
+            )}
+            <button
+              type="submit"
+              form="entry-editor-form"
+              className="btn btn-primary"
+              disabled={isSaving}
+            >
+              {isSaving
+                ? 'Guardando...'
+                : isEditingExisting
+                  ? 'Guardar alterações'
+                  : 'Guardar no caderno'}{' '}
+              <Icon name="check" />
+            </button>
+          </div>
+        </>
+      }
+    >
       {/* Banner de Rascunho Não Finalizado */}
       {showDraftBanner && existingDraft && (
         <div className="p-4 rounded-xs border border-amber-300 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200">
@@ -299,33 +363,30 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
         </div>
       )}
 
-      {/* Topo: Navegação e Status */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <button
-          type="button"
-          onClick={() => onNavigate(isEditingExisting ? `#/ficha/${initialEntry!.id}` : '#/caderno')}
-          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-[#6b6458] dark:text-[#9e9687] hover:text-[#312d26] dark:hover:text-[#eee7db]"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          {isEditingExisting ? 'Cancelar Edição' : 'Voltar ao Caderno'}
-        </button>
-
-        <div className="flex items-center gap-3">
-          {draftStatus && (
-            <span className="text-[11px] font-mono-code text-[#6b6458] dark:text-[#9e9687] hidden sm:inline">
-              {draftStatus}
-            </span>
-          )}
-
-          <PaperButton
-            variant="primary"
-            onClick={handleSave}
-            disabled={isSaving}
-            className="!py-2 !px-4 text-xs sm:text-sm font-semibold"
+      <div className="entry-heading">
+        <div>
+          <h2 id="entry-title">
+            {isEditingExisting ? 'Revisitar esta memória?' : 'O que ficou na memória?'}
+          </h2>
+          <p>
+            Uma anotação já é um bom começo. O resto pode esperar.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            aria-label={formData.favorite ? 'Remover dos favoritos' : 'Marcar como favorito'}
+            aria-pressed={Boolean(formData.favorite)}
+            onClick={() => setFormData((p) => ({ ...p, favorite: !p.favorite }))}
+            className={`p-1.5 rounded transition-colors ${
+              formData.favorite
+                ? 'text-[#793b46] bg-[#793b46]/10'
+                : 'text-stone-400 hover:text-stone-700'
+            }`}
           >
-            <Save className="w-4 h-4 mr-1.5" />
-            {isSaving ? 'Salvando...' : isEditingExisting ? 'Salvar Alterações' : 'Concluir Ficha'}
-          </PaperButton>
+            <Star className={`w-5 h-5 ${formData.favorite ? 'fill-current' : ''}`} />
+          </button>
+          <Doodle name="cork" className="doodle" />
         </div>
       </div>
 
@@ -334,31 +395,6 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
         material="sheet"
         className="p-6 sm:p-8 border border-[#cfc4b0] dark:border-[#3d362b] rounded-xs shadow-md space-y-6"
       >
-        <div className="border-b border-[#cfc4b0]/70 dark:border-[#3d362b] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h1 className="font-serif text-2xl font-bold text-[#312d26] dark:text-[#eee7db]">
-              {isEditingExisting ? 'Editar Ficha de Degustação' : 'Nova Ficha de Degustação'}
-            </h1>
-            <p className="text-xs text-[#6b6458] dark:text-[#9e9687]">
-              Preencha os dados do vinho e anote suas percepções visuais, olfativas e gustativas.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-[#6b6458] dark:text-[#9e9687]">Favorito:</span>
-            <button
-              type="button"
-              onClick={() => setFormData((p) => ({ ...p, favorite: !p.favorite }))}
-              className={`p-1.5 rounded transition-colors ${
-                formData.favorite
-                  ? 'text-[#793b46] bg-[#793b46]/10'
-                  : 'text-stone-400 hover:text-stone-700'
-              }`}
-            >
-              <Star className={`w-5 h-5 ${formData.favorite ? 'fill-current' : ''}`} />
-            </button>
-          </div>
-        </div>
 
         {/* Abas das Etapas da Ficha */}
         <div className="flex items-center gap-1 border-b border-[#cfc4b0]/70 dark:border-[#3d362b] overflow-x-auto pb-px text-xs">
@@ -385,7 +421,7 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
         </div>
 
         {/* Conteúdo da Aba Ativa */}
-        <form onSubmit={handleSave} className="space-y-6">
+        <form id="entry-editor-form" onSubmit={handleSave} className="space-y-6">
           {/* ABA 1: GERAL & RÓTULO */}
           {activeTab === 'geral' && (
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
@@ -1242,6 +1278,6 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
           </div>
         </form>
       </PaperSurface>
-    </div>
+    </ModalDialog>
   );
 };

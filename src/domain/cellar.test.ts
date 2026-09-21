@@ -39,9 +39,9 @@ describe('Cellar grouping', () => {
     assert.strictEqual(cellar.length, 2);
   });
 
-  it('transforma as fichas de exemplo em três garrafas', () => {
+  it('transforma as fichas de exemplo em seis garrafas', () => {
     const cellar = groupIntoCellar(getDemoWines(new Date('2026-09-21T12:00:00Z')));
-    assert.strictEqual(cellar.length, 3);
-    assert.ok(cellar.some((bottle) => bottle.vinho === 'Malbec Argentino' && bottle.averageRating === 5));
+    assert.strictEqual(cellar.length, 6);
+    assert.ok(cellar.some((bottle) => bottle.vinho === 'Casa do Vento' && bottle.averageRating === 5));
   });
 });

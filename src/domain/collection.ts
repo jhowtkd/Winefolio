@@ -1,4 +1,5 @@
 import type { WineEntry } from './wine-entry';
+import { countryName } from './countries';
 
 export type CollectionTab = 'all' | 'favorites' | 'sparkling';
 export type SortOption = 'date-desc' | 'date-asc' | 'rating-desc' | 'name-asc' | 'vintage-desc';
@@ -84,6 +85,8 @@ export function filterAndSortEntries(entries: WineEntry[], options: FilterOption
         entry.safra,
         entry.origin?.region,
         entry.conclusao?.impressaoFinal,
+        entry.occasion,
+        entry.origin?.countryCode ? countryName(entry.origin.countryCode) : '',
         ...(entry.aromaTags || []),
         ...(entry.tags || []),
       ]

@@ -1,7 +1,9 @@
 export type AppRoute =
-  | { kind: 'journal'; search?: string; tab?: 'all' | 'favorites' | 'sparkling' }
+  | { kind: 'journal'; search?: string; tab?: 'all' | 'favorites' | 'sparkling'; country?: string; aroma?: string }
   | { kind: 'new'; fromTemplateId?: string }
   | { kind: 'entry'; id: string; mode: 'view' | 'edit' }
+  | { kind: 'passport' }
+  | { kind: 'palate' }
   | { kind: 'cellar' }
   | { kind: 'stats' }
   | { kind: 'settings' }
@@ -29,6 +31,14 @@ export function parseHash(hash: string): AppRoute {
     return { kind: 'entry', id, mode };
   }
 
+  if (primary === 'passaporte' || primary === 'passport') {
+    return { kind: 'passport' };
+  }
+
+  if (primary === 'paladar' || primary === 'palate') {
+    return { kind: 'palate' };
+  }
+
   if (primary === 'adega' || primary === 'cellar') {
     return { kind: 'cellar' };
   }
@@ -52,6 +62,8 @@ export function parseHash(hash: string): AppRoute {
     kind: 'journal',
     search: params.get('q') || undefined,
     tab: validTab,
+    country: params.get('pais') || undefined,
+    aroma: params.get('aroma') || undefined,
   };
 }
 
@@ -61,6 +73,8 @@ export function formatHash(route: AppRoute): string {
       const params = new URLSearchParams();
       if (route.search) params.set('q', route.search);
       if (route.tab && route.tab !== 'all') params.set('aba', route.tab);
+      if (route.country) params.set('pais', route.country);
+      if (route.aroma) params.set('aroma', route.aroma);
       const q = params.toString();
       return q ? `#/caderno?${q}` : '#/caderno';
     }
@@ -70,6 +84,10 @@ export function formatHash(route: AppRoute): string {
     case 'entry': {
       return route.mode === 'edit' ? `#/ficha/${encodeURIComponent(route.id)}/editar` : `#/ficha/${encodeURIComponent(route.id)}`;
     }
+    case 'passport':
+      return '#/passaporte';
+    case 'palate':
+      return '#/paladar';
     case 'cellar':
       return '#/adega';
     case 'stats':

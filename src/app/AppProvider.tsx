@@ -19,6 +19,7 @@ import { getDemoWines } from '../data/demo-wines';
 import { WinefolioContext, type WinefolioContextValue } from './useWinefolio';
 import { parseHash, formatHash, type AppRoute } from './navigation';
 import { RecoveryScreen } from './RecoveryScreen';
+import { Icon } from '../components/proto/Sprite';
 
 interface ToastState {
   id: number;
@@ -125,17 +126,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem('wine_sommelier_night_mode', 'light');
     }
 
+    const body = document.body;
     if (preferences.textures) {
       root.removeAttribute('data-textures');
+      body.classList.remove('flat');
     } else {
       root.setAttribute('data-textures', 'off');
+      body.classList.add('flat');
     }
 
     const motion = motionDataset(preferences.reduceMotion);
     if (motion) {
       root.setAttribute('data-motion', motion);
+      body.classList.add('minimal-motion');
     } else {
       root.removeAttribute('data-motion');
+      body.classList.remove('minimal-motion');
     }
   }, [preferences]);
 
@@ -267,7 +273,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     const reloaded = await repository.load();
     setEntries(applyDemoFavorites(reloaded.entries, preferences.demoFavorites));
-    showToast('3 fichas de demonstração adicionadas ao seu caderno!', 'success');
+    showToast('6 fichas de exemplo adicionadas ao seu caderno!', 'success');
   }, [repository, showToast, preferences.demoFavorites]);
 
   const readPhotoBlob = useCallback(
@@ -340,22 +346,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <WinefolioContext.Provider value={contextValue}>
       {children}
 
-      {/* Notificação Toast Flutuante */}
+      {/* Notificação Toast no padrão do protótipo */}
       {toast && (
-        <div className="fixed bottom-20 md:bottom-5 left-1/2 -translate-x-1/2 z-50 animate-toast">
-          <div
-            className={`px-4 py-2.5 rounded-xs border shadow-lg text-xs sm:text-sm font-medium flex items-center gap-2 ${
-              toast.type === 'success'
-                ? 'bg-[#5d6b4f] text-[#fffaf0] border-[#4a563f]'
-                : toast.type === 'error'
-                ? 'bg-red-800 text-white border-red-950'
-                : toast.type === 'warn'
-                ? 'bg-amber-800 text-white border-amber-950'
-                : 'bg-[#793b46] text-[#fffaf0] border-[#5c2733]'
-            }`}
-          >
-            <span>{toast.message}</span>
+        <div className="toast" role="status" aria-live="polite">
+          <Icon name={toast.type === 'success' ? 'check' : 'info'} />
+          <div>
+            <strong>{toast.message}</strong>
           </div>
+          <button type="button" aria-label="Fechar aviso" onClick={() => setToast(null)}>
+            <Icon name="close" />
+          </button>
         </div>
       )}
     </WinefolioContext.Provider>
