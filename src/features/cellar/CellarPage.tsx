@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import type { WineEntry } from '../../domain/wine-entry';
 import { groupIntoCellar, type CellarBottle } from '../../domain/cellar';
 import { styleLabel } from '../../domain/insights';
+import { countryName } from '../../domain/countries';
 import { PaperSurface } from '../../components/ui/PaperSurface';
 import { PaperButton } from '../../components/ui/PaperButton';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -14,22 +15,6 @@ interface CellarPageProps {
   onNewEntry: () => void;
   onLoadDemoWines: () => void;
 }
-
-const COUNTRY_NAMES: Record<string, string> = {
-  AR: 'Argentina',
-  BR: 'Brasil',
-  CL: 'Chile',
-  FR: 'França',
-  IT: 'Itália',
-  ES: 'Espanha',
-  PT: 'Portugal',
-  US: 'Estados Unidos',
-  DE: 'Alemanha',
-  ZA: 'África do Sul',
-  AU: 'Austrália',
-  NZ: 'Nova Zelândia',
-  UY: 'Uruguai',
-};
 
 function formatDate(value: string): string {
   const [year, month, day] = value.split('-');
@@ -53,7 +38,7 @@ function Stars({ value }: { value: number | null }) {
 
 const BottleCard: React.FC<{ bottle: CellarBottle; onOpen: () => void }> = ({ bottle, onOpen }) => {
   const title = bottle.vinho || bottle.produtor || 'Garrafa sem nome';
-  const country = bottle.countryCode ? COUNTRY_NAMES[bottle.countryCode] || bottle.countryCode : '';
+  const country = countryName(bottle.countryCode);
 
   return (
     <button

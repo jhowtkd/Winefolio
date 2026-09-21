@@ -8,6 +8,7 @@ import {
   styleBreakdown,
   tastingsByMonth,
 } from '../../domain/insights';
+import { countryName } from '../../domain/countries';
 import { PaperSurface } from '../../components/ui/PaperSurface';
 import { PaperButton } from '../../components/ui/PaperButton';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -16,27 +17,6 @@ import { BarChart3 } from 'lucide-react';
 interface StatsPageProps {
   entries: WineEntry[];
   onOpenJournal: () => void;
-}
-
-const COUNTRY_NAMES: Record<string, string> = {
-  AR: 'Argentina',
-  BR: 'Brasil',
-  CL: 'Chile',
-  FR: 'França',
-  IT: 'Itália',
-  ES: 'Espanha',
-  PT: 'Portugal',
-  US: 'Estados Unidos',
-  DE: 'Alemanha',
-  ZA: 'África do Sul',
-  AU: 'Austrália',
-  NZ: 'Nova Zelândia',
-  UY: 'Uruguai',
-};
-
-function countryName(code: string): string {
-  if (code === 'Sem país') return code;
-  return COUNTRY_NAMES[code] || code;
 }
 
 const Meter: React.FC<{ label: string; count: number; max: number }> = ({ label, count, max }) => {

@@ -7,6 +7,7 @@ import type {
   PhotoChange,
 } from '../../domain/wine-entry';
 import { createEntry } from '../../domain/wine-factory';
+import { COUNTRIES, inferCountryCode } from '../../domain/countries';
 import { PaperSurface } from '../../components/ui/PaperSurface';
 import { PaperButton } from '../../components/ui/PaperButton';
 import { InkStamp } from '../../components/ui/InkStamp';
@@ -510,10 +511,44 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
                     <input
                       type="text"
                       value={formData.regiaoPais || ''}
-                      onChange={(e) => setFormData({ ...formData, regiaoPais: e.target.value })}
+                      onChange={(e) => {
+                        const countryCode =
+                          inferCountryCode(e.target.value) ?? formData.origin?.countryCode ?? null;
+                        setFormData({
+                          ...formData,
+                          regiaoPais: e.target.value,
+                          origin: { countryCode, region: e.target.value },
+                        });
+                      }}
                       placeholder="Ex: Vale dos Vinhedos, Brasil"
                       className="w-full px-3 py-2 text-xs sm:text-sm rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] text-[#312d26] dark:text-[#eee7db]"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
+                      País
+                    </label>
+                    <select
+                      value={formData.origin?.countryCode || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          origin: {
+                            countryCode: e.target.value || null,
+                            region: formData.origin?.region || formData.regiaoPais || '',
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-2 text-xs sm:text-sm rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
+                    >
+                      <option value="">Sem país</option>
+                      {COUNTRIES.map((country) => (
+                        <option key={country.code} value={country.code}>
+                          {country.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
