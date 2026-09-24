@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { ModalDialog } from '../../components/proto/ModalDialog';
 import { Icon } from '../../components/proto/Sprite';
 import type { Preferences } from '../../domain/wine-entry';
+import type { BackupStatus } from '../../domain/backup-reminder';
 
 interface SettingsPageProps {
   preferences: Preferences;
@@ -9,6 +10,8 @@ interface SettingsPageProps {
   onExportBackup: () => Promise<void>;
   onImportBackup: (file: File) => Promise<{ imported: number; skipped: number }>;
   onLoadDemoWines: () => Promise<void>;
+  backupStatus: BackupStatus;
+  storagePersisted: boolean | null;
   onNavigate: (hash: string) => void;
   showToast: (msg: string, type?: 'info' | 'success' | 'warn' | 'error') => void;
 }
@@ -20,6 +23,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   onExportBackup,
   onImportBackup,
   onLoadDemoWines,
+  backupStatus,
+  storagePersisted,
   onNavigate,
   showToast,
 }) => {
@@ -176,6 +181,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           <div>
             <h3>Uma cópia das suas anotações</h3>
             <p>Exportação JSON das suas fichas para guardar ou levar a outro navegador.</p>
+            <p>
+              {backupStatus.lastBackupAt
+                ? `Último backup: ${new Date(backupStatus.lastBackupAt).toLocaleDateString('pt-BR')}.`
+                : 'Nenhum backup ainda.'}
+            </p>
           </div>
           <button
             type="button"
@@ -186,6 +196,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <Icon name="download" />
             {isExporting ? 'Exportando...' : 'Exportar'}
           </button>
+        </div>
+
+        <div className="setting-row">
+          <div>
+            <h3>Proteção contra limpeza do navegador</h3>
+            <p>
+              {storagePersisted === true
+                ? 'Ativa. O navegador não apaga o caderno para liberar espaço.'
+                : storagePersisted === false
+                  ? 'Negada pelo navegador. Instale o app na tela inicial ou faça backups.'
+                  : 'Não suportada neste navegador. Faça backups.'}
+            </p>
+          </div>
         </div>
 
         <div className="setting-row">

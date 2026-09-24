@@ -36,6 +36,10 @@ const AppContent: React.FC = () => {
     showToast,
     activeEntry,
     loading,
+    backupStatus,
+    backupDue,
+    storagePersisted,
+    snoozeBackupReminder,
   } = useWinefolio();
 
   if (loading) {
@@ -79,6 +83,9 @@ const AppContent: React.FC = () => {
       onDiscardDraft={discardDraft}
       onNavigate={(route) => navigate(route)}
       onOpenPassport={() => navigate({ kind: 'passport' })}
+      backupDue={backupDue}
+      onExportBackup={exportBackup}
+      onSnoozeBackup={snoozeBackupReminder}
     />
   );
 
@@ -210,6 +217,8 @@ const AppContent: React.FC = () => {
             onExportBackup={exportBackup}
             onImportBackup={importBackup}
             onLoadDemoWines={loadDemoWines}
+            backupStatus={backupStatus}
+            storagePersisted={storagePersisted}
             onNavigate={(hash) => {
               window.location.hash = hash;
             }}

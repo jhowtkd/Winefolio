@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { IDBPDatabase } from 'idb';
 import type { WineDb } from '../repositories/database';
 import { openWineDatabase } from '../repositories/database';
@@ -15,6 +15,8 @@ import type {
 import { createPreferences } from '../domain/preferences';
 import { motionDataset } from '../domain/motion';
 import { applyDemoFavorites } from '../domain/demo-visibility';
+import { EMPTY_BACKUP_STATUS, isBackupDue, type BackupStatus } from '../domain/backup-reminder';
+import { ensurePersistentStorage, readPersistentStorage } from './storage-persistence';
 import { getDemoWines } from '../data/demo-wines';
 import { WinefolioContext, type WinefolioContextValue } from './useWinefolio';
 import { parseHash, formatHash, type AppRoute } from './navigation';
@@ -46,6 +48,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { kind: 'journal', tab: 'all' };
   });
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [backupStatus, setBackupStatus] = useState<BackupStatus>(EMPTY_BACKUP_STATUS);
+  const [storagePersisted, setStoragePersisted] = useState<boolean | null>(null);
+  const persistRequested = useRef(false);
 
   const showToast = useCallback(
     (message: string, type: 'info' | 'success' | 'warn' | 'error' = 'info') => {
@@ -85,6 +90,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setEntries(applyDemoFavorites(snapshot.entries, snapshot.preferences.demoFavorites));
       setDraft(snapshot.draft);
       setPreferences(snapshot.preferences);
+      setBackupStatus(await repo.readBackupStatus());
+      setStoragePersisted(await readPersistentStorage());
     } catch (err: any) {
       console.error('Falha de inicialização do Winefolio:', err);
       setError(err?.message || 'Erro ao inicializar o banco de dados local.');
@@ -165,10 +172,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setDraft(null);
       }
 
+      // Pede proteção contra limpeza só depois da primeira ficha pessoal:
+      // o Firefox mostra um pedido de permissão, e ele precisa fazer sentido.
+      if (saved.kind !== 'demo' && storagePersisted !== true && !persistRequested.current) {
+        persistRequested.current = true;
+        void ensurePersistentStorage().then(setStoragePersisted);
+      }
+
       showToast(`Ficha de "${saved.vinho || saved.produtor || 'Vinho'}" salva com sucesso!`, 'success');
       return saved;
     },
-    [repository, showToast]
+    [repository, showToast, storagePersisted]
   );
 
   const updatePreferences = useCallback(
@@ -233,8 +247,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     a.download = `winefolio-backup-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    const status: BackupStatus = { lastBackupAt: Date.now(), snoozedUntil: null };
+    setBackupStatus(status);
+    await repository?.saveBackupStatus(status).catch(() => undefined);
     showToast('Backup exportado com sucesso!', 'success');
-  }, [db, showToast]);
+  }, [db, repository, showToast]);
+
+  const snoozeBackupReminder = useCallback(async (): Promise<void> => {
+    const status: BackupStatus = { ...backupStatus, snoozedUntil: Date.now() + 7 * 86_400_000 };
+    setBackupStatus(status);
+    await repository?.saveBackupStatus(status).catch(() => undefined);
+  }, [backupStatus, repository]);
+
+  const backupDue = useMemo(
+    () => isBackupDue(backupStatus, entries, Date.now()),
+    [backupStatus, entries]
+  );
 
   const importBackup = useCallback(
     async (file: File): Promise<{ imported: number; skipped: number }> => {
@@ -313,6 +341,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       loading,
       error,
       retryInit: initApp,
+      backupStatus,
+      backupDue,
+      storagePersisted,
+      snoozeBackupReminder,
     }),
     [
       entries,
@@ -335,6 +367,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       loading,
       error,
       initApp,
+      backupStatus,
+      backupDue,
+      storagePersisted,
+      snoozeBackupReminder,
     ]
   );
 

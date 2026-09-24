@@ -6,6 +6,7 @@ import type {
   CommitEntryInput,
   PhotoChange,
 } from '../domain/wine-entry';
+import type { BackupStatus } from '../domain/backup-reminder';
 import type { AppRoute } from './navigation';
 
 export interface WinefolioContextValue {
@@ -29,6 +30,10 @@ export interface WinefolioContextValue {
   loading: boolean;
   error: string | null;
   retryInit: () => void;
+  backupStatus: BackupStatus;
+  backupDue: boolean;
+  storagePersisted: boolean | null;
+  snoozeBackupReminder: () => Promise<void>;
 }
 
 export const WinefolioContext = createContext<WinefolioContextValue | null>(null);

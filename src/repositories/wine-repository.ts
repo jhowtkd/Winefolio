@@ -9,6 +9,7 @@ import type {
   PhotoChange,
 } from '../domain/wine-entry';
 import { createPreferences } from '../domain/preferences';
+import { EMPTY_BACKUP_STATUS, type BackupStatus } from '../domain/backup-reminder';
 
 export class StorageUnavailableError extends Error {
   code = 'STORAGE_UNAVAILABLE';
@@ -51,6 +52,8 @@ export interface WineRepository {
   discardDraft(): Promise<void>;
   savePreferences(value: Preferences): Promise<void>;
   readPhoto(id: string): Promise<Blob | undefined>;
+  readBackupStatus(): Promise<BackupStatus>;
+  saveBackupStatus(status: BackupStatus): Promise<void>;
 }
 
 export function createWineRepository(db: IDBPDatabase<WineDb>): WineRepository {
@@ -261,6 +264,23 @@ export function createWineRepository(db: IDBPDatabase<WineDb>): WineRepository {
         return await db.get('photos', id);
       } catch {
         return undefined;
+      }
+    },
+
+    async readBackupStatus(): Promise<BackupStatus> {
+      try {
+        const stored = (await db.get('meta', 'backup-status')) as Partial<BackupStatus> | undefined;
+        return { ...EMPTY_BACKUP_STATUS, ...stored };
+      } catch {
+        return EMPTY_BACKUP_STATUS;
+      }
+    },
+
+    async saveBackupStatus(status: BackupStatus): Promise<void> {
+      try {
+        await db.put('meta', status, 'backup-status');
+      } catch (err: any) {
+        throw new StorageUnavailableError(err.message);
       }
     },
   };
