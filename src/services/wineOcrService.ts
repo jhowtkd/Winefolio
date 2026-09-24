@@ -11,7 +11,12 @@ export async function analyzeWineLabelPhoto(imageBase64: string): Promise<Analyz
     body: JSON.stringify({ imageBase64 }),
   });
 
-  const json = await response.json();
+  let json: { success?: boolean; error?: string; data?: AnalyzedWineLabel } = {};
+  try {
+    json = await response.json();
+  } catch {
+    // Corpo não-JSON (erro de infraestrutura): cai na mensagem padrão.
+  }
 
   if (!response.ok || !json.success) {
     throw new Error(json.error || 'Não foi possível ler as informações do rótulo.');
