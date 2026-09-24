@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense, lazy } from 'react';
 import type { IDBPDatabase } from 'idb';
 import type { WineDb } from '../repositories/database';
 import { openWineDatabase } from '../repositories/database';
@@ -8,14 +8,7 @@ import {
   MissingEntryError,
   type WineRepository,
 } from '../repositories/wine-repository';
-import { migrateLegacy } from '../repositories/migration';
-import {
-  exportBackup as doExportBackup,
-  prepareImport,
-  commitImport,
-  type ImportPreview,
-  type ImportDecisions,
-} from '../repositories/transfer';
+import type { ImportPreview, ImportDecisions } from '../repositories/transfer';
 import type {
   WineEntry,
   EntryDraft,
@@ -27,12 +20,10 @@ import { createPreferences } from '../domain/preferences';
 import { motionDataset } from '../domain/motion';
 import { applyDemoFavorites } from '../domain/demo-visibility';
 import { EMPTY_BACKUP_STATUS, isBackupDue, type BackupStatus } from '../domain/backup-reminder';
-import { defaultImportDecisions } from '../domain/import-decisions';
 import { ensurePersistentStorage, readPersistentStorage } from './storage-persistence';
 import { getDemoWines } from '../data/demo-wines';
 import { WinefolioContext, type WinefolioContextValue } from './useWinefolio';
 import { parseHash, formatHash, type AppRoute } from './navigation';
-import { RecoveryScreen } from './RecoveryScreen';
 import { Icon } from '../components/proto/Sprite';
 
 type ToastType = 'info' | 'success' | 'warn' | 'error';
@@ -41,6 +32,14 @@ export interface ToastOptions {
   action?: { label: string; run: () => void };
   durationMs?: number;
 }
+
+// Só aparece quando o banco falha ao abrir.
+const RecoveryScreen = lazy(() => import('./RecoveryScreen').then((m) => ({ default: m.RecoveryScreen })));
+
+// Backup e importação carregam o zod; ficam fora do bundle inicial.
+// A migração do formato v1 só roda quando há dados antigos no localStorage.
+const loadTransfer = () => import('../repositories/transfer');
+const loadImportDecisions = () => import('../domain/import-decisions');
 
 interface ToastState {
   id: number;
@@ -99,6 +98,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const legacyRaw = typeof window !== 'undefined' ? localStorage.getItem('sommelier_wine_sheets_v1') : null;
       if (legacyRaw) {
         try {
+          const { migrateLegacy } = await import('../repositories/migration');
           const migrationResult = await migrateLegacy(database, legacyRaw);
           if (migrationResult === 'migrated') {
             console.info('Dados legados v1 migrados com sucesso para o IndexedDB v2.');
@@ -315,6 +315,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const exportBackup = useCallback(async (): Promise<void> => {
     if (!db) throw new Error('Banco de dados indisponível');
+    const { exportBackup: doExportBackup } = await loadTransfer();
     const blob = await doExportBackup(db);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -342,6 +343,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const previewImport = useCallback(
     async (file: File): Promise<{ preview: ImportPreview; defaults: ImportDecisions }> => {
       if (!repository) throw new Error('Banco de dados indisponível');
+      const [{ prepareImport }, { defaultImportDecisions }] = await Promise.all([
+        loadTransfer(),
+        loadImportDecisions(),
+      ]);
       const text = await file.text();
       const current = await repository.load();
       const preview = await prepareImport(text, current);
@@ -356,6 +361,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       decisions: ImportDecisions
     ): Promise<{ imported: number; skipped: number }> => {
       if (!db || !repository) throw new Error('Banco de dados indisponível');
+      const { commitImport } = await loadTransfer();
       const result = await commitImport(db, preview, decisions);
       const reloaded = await repository.load();
       setEntries(applyDemoFavorites(reloaded.entries, reloaded.preferences.demoFavorites));
@@ -455,7 +461,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 
   if (error) {
-    return <RecoveryScreen error={error} onRetry={initApp} />;
+    return (
+      <Suspense fallback={null}>
+        <RecoveryScreen error={error} onRetry={initApp} />
+      </Suspense>
+    );
   }
 
   return (

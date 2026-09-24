@@ -46,7 +46,8 @@ test('em conflito, mantém a minha ficha por padrão e deixa escolher a do backu
   await page.getByRole('button', { name: /Editar Ficha/ }).click();
   await page.getByPlaceholder('Ex: Malbec Argentino, Don Melchor').fill('Vinho Um Editado');
   await page.getByRole('button', { name: /Guardar alterações/ }).click();
-  await expect(page).toHaveURL(/#\/ficha\//);
+  // Sai de #/ficha/<id>/editar para #/ficha/<id> só quando o salvamento termina.
+  await expect(page).toHaveURL(/#\/ficha\/[^/]+$/);
 
   await chooseBackup(page, file);
   await expect(page.getByTestId('import-summary')).toContainText('1 em conflito');

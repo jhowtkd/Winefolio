@@ -17,6 +17,7 @@ test('registra, favorita, busca e edita uma ficha', async ({ page }) => {
   await page.getByRole('button', { name: /Editar Ficha/ }).click();
   await page.getByPlaceholder('Ex: Malbec Argentino, Don Melchor').fill('Branco do Vale Reserva');
   await page.getByRole('button', { name: /Guardar alterações/ }).click();
+  await expect(page).toHaveURL(/#\/ficha\/[^/]+$/);
   await page.goto('/#/caderno');
   await expect(card(page, 'Branco do Vale Reserva')).toBeVisible();
 });
@@ -84,4 +85,26 @@ test('sem desfazer, a exclusão vale depois do prazo', async ({ page }) => {
   await page.reload();
   await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
   await expect(card(page, 'Rosé da Praia')).toHaveCount(0);
+});
+
+test('registrar outra ficha enquanto a anterior ainda carrega não reaproveita o editor velho', async ({ page }) => {
+  // Simula rede lenta no chunk da ficha, que chega depois do salvamento.
+  await page.route('**/assets/TastingSheetDetails-*.js', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+  await page.goto('/#/novo');
+  await page.getByPlaceholder('Ex: Malbec Argentino, Don Melchor').fill('Primeiro');
+  await page.getByRole('button', { name: /Guardar no caderno/ }).click();
+  await expect(page).toHaveURL(/#\/ficha\//);
+
+  await page.goto('/#/novo');
+  await expect(page.getByPlaceholder('Ex: Malbec Argentino, Don Melchor')).toHaveValue('');
+  await page.getByPlaceholder('Ex: Malbec Argentino, Don Melchor').fill('Segundo');
+  await page.getByRole('button', { name: /Guardar no caderno/ }).click();
+  await expect(page).toHaveURL(/#\/ficha\//);
+
+  await page.goto('/#/caderno');
+  await expect(card(page, 'Primeiro')).toBeVisible();
+  await expect(card(page, 'Segundo')).toBeVisible();
 });

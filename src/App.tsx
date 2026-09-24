@@ -1,20 +1,30 @@
-import React from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { AppProvider } from './app/AppProvider';
 import { useWinefolio } from './app/useWinefolio';
 import { Header } from './components/layout/Header';
 import { SvgSprite, Icon } from './components/proto/Sprite';
 import { JournalPage } from './features/journal/JournalPage';
-import { PassportPage } from './features/passport/PassportPage';
-import { PalatePage } from './features/palate/PalatePage';
-import { TastingSheetDetails } from './features/entry/TastingSheetDetails';
-import { EntryEditorPage } from './features/entry/EntryEditorPage';
-import { SettingsPage } from './features/settings/SettingsPage';
-import { CellarPage } from './features/cellar/CellarPage';
-import { StatsPage } from './features/stats/StatsPage';
 import { EmptyState } from './components/ui/EmptyState';
 import { PaperButton } from './components/ui/PaperButton';
 import { visibleEntries } from './domain/demo-visibility';
 import { getDemoWines } from './data/demo-wines';
+
+// Diálogos e páginas secundárias carregam sob demanda. O caderno fica no bundle inicial.
+const loadEditor = () => import('./features/entry/EntryEditorPage');
+const loadSheet = () => import('./features/entry/TastingSheetDetails');
+const PassportPage = lazy(() => import('./features/passport/PassportPage').then((m) => ({ default: m.PassportPage })));
+const PalatePage = lazy(() => import('./features/palate/PalatePage').then((m) => ({ default: m.PalatePage })));
+const TastingSheetDetails = lazy(() => loadSheet().then((m) => ({ default: m.TastingSheetDetails })));
+const EntryEditorPage = lazy(() => loadEditor().then((m) => ({ default: m.EntryEditorPage })));
+const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const CellarPage = lazy(() => import('./features/cellar/CellarPage').then((m) => ({ default: m.CellarPage })));
+const StatsPage = lazy(() => import('./features/stats/StatsPage').then((m) => ({ default: m.StatsPage })));
+
+const PageLoading: React.FC = () => (
+  <p className="py-16 text-center text-xs mono" role="status">
+    Abrindo a página...
+  </p>
+);
 
 const AppContent: React.FC = () => {
   const {
@@ -42,6 +52,21 @@ const AppContent: React.FC = () => {
     storagePersisted,
     snoozeBackupReminder,
   } = useWinefolio();
+
+  // Pré-carrega o editor e a ficha com o navegador ocioso. "Registrar vinho" abre sem
+  // espera, e salvar não deixa a tela vazia enquanto a ficha carrega.
+  useEffect(() => {
+    const preload = () => {
+      void loadEditor();
+      void loadSheet();
+    };
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(preload);
+      return () => window.cancelIdleCallback(id);
+    }
+    const timer = setTimeout(preload, 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (loading) {
     return (
@@ -104,74 +129,86 @@ const AppContent: React.FC = () => {
         {(activeRoute.kind === 'journal' || overlayRoute) && journal}
 
         {activeRoute.kind === 'passport' && (
-          <PassportPage
-            entries={ownEntries}
-            demoEntries={demoEntries}
-            defaultMode={ownEntries.length ? 'mine' : 'demo'}
-            onOpenCountry={(code) =>
-              navigate({ kind: 'journal', tab: 'all', country: code })
-            }
-          />
+          <Suspense fallback={<PageLoading />}>
+            <PassportPage
+              entries={ownEntries}
+              demoEntries={demoEntries}
+              defaultMode={ownEntries.length ? 'mine' : 'demo'}
+              onOpenCountry={(code) =>
+                navigate({ kind: 'journal', tab: 'all', country: code })
+              }
+            />
+          </Suspense>
         )}
 
         {activeRoute.kind === 'palate' && (
-          <PalatePage
-            entries={ownEntries}
-            demoEntries={demoEntries}
-            defaultMode={ownEntries.length ? 'mine' : 'demo'}
-            onAromaSearch={(aroma) => navigate({ kind: 'journal', tab: 'all', search: aroma })}
-            onRevisit={(entry) => {
-              if (entry) navigate({ kind: 'entry', id: entry.id, mode: 'view' });
-              else navigate({ kind: 'new' });
-            }}
-          />
+          <Suspense fallback={<PageLoading />}>
+            <PalatePage
+              entries={ownEntries}
+              demoEntries={demoEntries}
+              defaultMode={ownEntries.length ? 'mine' : 'demo'}
+              onAromaSearch={(aroma) => navigate({ kind: 'journal', tab: 'all', search: aroma })}
+              onRevisit={(entry) => {
+                if (entry) navigate({ kind: 'entry', id: entry.id, mode: 'view' });
+                else navigate({ kind: 'new' });
+              }}
+            />
+          </Suspense>
         )}
 
         {activeRoute.kind === 'cellar' && (
-          <CellarPage
-            entries={shown}
-            onOpenEntry={(id) => navigate({ kind: 'entry', id, mode: 'view' })}
-            onNewEntry={() => navigate({ kind: 'new' })}
-            onLoadDemoWines={loadDemoWines}
-          />
+          <Suspense fallback={<PageLoading />}>
+            <CellarPage
+              entries={shown}
+              onOpenEntry={(id) => navigate({ kind: 'entry', id, mode: 'view' })}
+              onNewEntry={() => navigate({ kind: 'new' })}
+              onLoadDemoWines={loadDemoWines}
+            />
+          </Suspense>
         )}
 
         {activeRoute.kind === 'stats' && (
-          <StatsPage entries={shown} onOpenJournal={() => navigate({ kind: 'journal', tab: 'all' })} />
+          <Suspense fallback={<PageLoading />}>
+            <StatsPage entries={shown} onOpenJournal={() => navigate({ kind: 'journal', tab: 'all' })} />
+          </Suspense>
         )}
 
         {activeRoute.kind === 'entry' && activeRoute.mode === 'view' && activeEntry && (
-          <TastingSheetDetails
-            entry={activeEntry}
-            readPhoto={readPhotoBlob}
-            onBack={() => navigate({ kind: 'journal', tab: 'all' })}
-            onEdit={(entry) => navigate({ kind: 'entry', id: entry.id, mode: 'edit' })}
-            onDuplicate={(entry) => navigate({ kind: 'new', fromTemplateId: entry.id })}
-            onToggleFavorite={(entry) => setFavorite(entry.id, !entry.favorite, entry.revision)}
-            onDelete={async (id, rev) => {
-              await removeEntry(id, rev);
-              navigate({ kind: 'journal', tab: 'all' });
-            }}
-          />
+          <Suspense fallback={null}>
+            <TastingSheetDetails
+              entry={activeEntry}
+              readPhoto={readPhotoBlob}
+              onBack={() => navigate({ kind: 'journal', tab: 'all' })}
+              onEdit={(entry) => navigate({ kind: 'entry', id: entry.id, mode: 'edit' })}
+              onDuplicate={(entry) => navigate({ kind: 'new', fromTemplateId: entry.id })}
+              onToggleFavorite={(entry) => setFavorite(entry.id, !entry.favorite, entry.revision)}
+              onDelete={async (id, rev) => {
+                await removeEntry(id, rev);
+                navigate({ kind: 'journal', tab: 'all' });
+              }}
+            />
+          </Suspense>
         )}
 
         {activeRoute.kind === 'entry' && activeRoute.mode === 'edit' && activeEntry && (
-          <EntryEditorPage
-            key={`edit-${activeEntry.id}`}
-            initialEntry={activeEntry}
-            readPhoto={readPhotoBlob}
-            onCommit={(entry, photo, expectedRevision, clearDraft) =>
-              commitEntry({ entry, photo, expectedRevision, clearDraft })
-            }
-            onSaveDraft={saveDraft}
-            onDiscardDraft={discardDraft}
-            aiConsented={Boolean(preferences.aiConsentAt)}
-            onGrantAiConsent={() => updatePreferences({ aiConsentAt: Date.now() })}
-            onNavigate={(hash) => {
-              window.location.hash = hash;
-            }}
-            showToast={showToast}
-          />
+          <Suspense fallback={null}>
+            <EntryEditorPage
+              key={`edit-${activeEntry.id}`}
+              initialEntry={activeEntry}
+              readPhoto={readPhotoBlob}
+              onCommit={(entry, photo, expectedRevision, clearDraft) =>
+                commitEntry({ entry, photo, expectedRevision, clearDraft })
+              }
+              onSaveDraft={saveDraft}
+              onDiscardDraft={discardDraft}
+              aiConsented={Boolean(preferences.aiConsentAt)}
+              onGrantAiConsent={() => updatePreferences({ aiConsentAt: Date.now() })}
+              onNavigate={(hash) => {
+                window.location.hash = hash;
+              }}
+              showToast={showToast}
+            />
+          </Suspense>
         )}
 
         {activeRoute.kind === 'entry' && !activeEntry && (
@@ -192,40 +229,44 @@ const AppContent: React.FC = () => {
         )}
 
         {activeRoute.kind === 'new' && (
-          <EntryEditorPage
-            key={activeRoute.fromTemplateId || 'new-clean'}
-            fromTemplate={templateEntry}
-            existingDraft={draft}
-            readPhoto={readPhotoBlob}
-            onCommit={(entry, photo, expectedRevision, clearDraft) =>
-              commitEntry({ entry, photo, expectedRevision, clearDraft })
-            }
-            onSaveDraft={saveDraft}
-            onDiscardDraft={discardDraft}
-            aiConsented={Boolean(preferences.aiConsentAt)}
-            onGrantAiConsent={() => updatePreferences({ aiConsentAt: Date.now() })}
-            onNavigate={(hash) => {
-              window.location.hash = hash;
-            }}
-            showToast={showToast}
-          />
+          <Suspense fallback={null}>
+            <EntryEditorPage
+              key={activeRoute.fromTemplateId || 'new-clean'}
+              fromTemplate={templateEntry}
+              existingDraft={draft}
+              readPhoto={readPhotoBlob}
+              onCommit={(entry, photo, expectedRevision, clearDraft) =>
+                commitEntry({ entry, photo, expectedRevision, clearDraft })
+              }
+              onSaveDraft={saveDraft}
+              onDiscardDraft={discardDraft}
+              aiConsented={Boolean(preferences.aiConsentAt)}
+              onGrantAiConsent={() => updatePreferences({ aiConsentAt: Date.now() })}
+              onNavigate={(hash) => {
+                window.location.hash = hash;
+              }}
+              showToast={showToast}
+            />
+          </Suspense>
         )}
 
         {activeRoute.kind === 'settings' && (
-          <SettingsPage
-            preferences={preferences}
-            onUpdatePreferences={updatePreferences}
-            onExportBackup={exportBackup}
-            onPreviewImport={previewImport}
-            onConfirmImport={confirmImport}
-            onLoadDemoWines={loadDemoWines}
-            backupStatus={backupStatus}
-            storagePersisted={storagePersisted}
-            onNavigate={(hash) => {
-              window.location.hash = hash;
-            }}
-            showToast={showToast}
-          />
+          <Suspense fallback={null}>
+            <SettingsPage
+              preferences={preferences}
+              onUpdatePreferences={updatePreferences}
+              onExportBackup={exportBackup}
+              onPreviewImport={previewImport}
+              onConfirmImport={confirmImport}
+              onLoadDemoWines={loadDemoWines}
+              backupStatus={backupStatus}
+              storagePersisted={storagePersisted}
+              onNavigate={(hash) => {
+                window.location.hash = hash;
+              }}
+              showToast={showToast}
+            />
+          </Suspense>
         )}
 
         <footer className="site-footer print:hidden">
