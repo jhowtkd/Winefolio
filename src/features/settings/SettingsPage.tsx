@@ -3,12 +3,18 @@ import { ModalDialog } from '../../components/proto/ModalDialog';
 import { Icon } from '../../components/proto/Sprite';
 import type { Preferences } from '../../domain/wine-entry';
 import type { BackupStatus } from '../../domain/backup-reminder';
+import type { ImportPreview, ImportDecisions } from '../../repositories/transfer';
+import { ImportPreviewDialog } from './ImportPreviewDialog';
 
 interface SettingsPageProps {
   preferences: Preferences;
   onUpdatePreferences: (prefs: Partial<Preferences>) => Promise<void>;
   onExportBackup: () => Promise<void>;
-  onImportBackup: (file: File) => Promise<{ imported: number; skipped: number }>;
+  onPreviewImport: (file: File) => Promise<{ preview: ImportPreview; defaults: ImportDecisions }>;
+  onConfirmImport: (
+    preview: ImportPreview,
+    decisions: ImportDecisions
+  ) => Promise<{ imported: number; skipped: number }>;
   onLoadDemoWines: () => Promise<void>;
   backupStatus: BackupStatus;
   storagePersisted: boolean | null;
@@ -21,7 +27,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   preferences,
   onUpdatePreferences,
   onExportBackup,
-  onImportBackup,
+  onPreviewImport,
+  onConfirmImport,
   onLoadDemoWines,
   backupStatus,
   storagePersisted,
@@ -31,6 +38,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [pendingImport, setPendingImport] = useState<{
+    preview: ImportPreview;
+    defaults: ImportDecisions;
+  } | null>(null);
   const [isLoadingDemo, setIsLoadingDemo] = useState(false);
 
   const handleExport = async () => {
@@ -49,14 +60,26 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     if (!file) return;
     try {
       setIsImporting(true);
-      const res = await onImportBackup(file);
-      showToast(`Importação realizada! ${res.imported} fichas processadas com sucesso.`, 'success');
-      onNavigate('#/caderno');
+      setPendingImport(await onPreviewImport(file));
     } catch (err: any) {
-      showToast('Falha ao importar arquivo: ' + err.message, 'error');
+      showToast('Falha ao ler o arquivo: ' + err.message, 'error');
     } finally {
       setIsImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleConfirmImport = async (decisions: ImportDecisions) => {
+    if (!pendingImport) return;
+    try {
+      setIsImporting(true);
+      await onConfirmImport(pendingImport.preview, decisions);
+      setPendingImport(null);
+      onNavigate('#/caderno');
+    } catch (err: any) {
+      showToast('Falha ao importar: ' + err.message, 'error');
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -261,6 +284,16 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         <code>winefolio-local</code>). A foto do rótulo só sai daqui quando você usa a leitura com
         IA, e vai para o Google Gemini.
       </div>
+
+      {pendingImport && (
+        <ImportPreviewDialog
+          preview={pendingImport.preview}
+          defaults={pendingImport.defaults}
+          busy={isImporting}
+          onCancel={() => setPendingImport(null)}
+          onConfirm={handleConfirmImport}
+        />
+      )}
     </ModalDialog>
   );
 };

@@ -7,6 +7,7 @@ import type {
   PhotoChange,
 } from '../domain/wine-entry';
 import type { BackupStatus } from '../domain/backup-reminder';
+import type { ImportPreview, ImportDecisions } from '../repositories/transfer';
 import type { AppRoute } from './navigation';
 
 export interface WinefolioContextValue {
@@ -22,7 +23,11 @@ export interface WinefolioContextValue {
   discardDraft: () => Promise<void>;
   updatePreferences: (prefs: Partial<Preferences>) => Promise<void>;
   exportBackup: () => Promise<void>;
-  importBackup: (file: File) => Promise<{ imported: number; skipped: number }>;
+  previewImport: (file: File) => Promise<{ preview: ImportPreview; defaults: ImportDecisions }>;
+  confirmImport: (
+    preview: ImportPreview,
+    decisions: ImportDecisions
+  ) => Promise<{ imported: number; skipped: number }>;
   loadDemoWines: () => Promise<void>;
   readPhotoBlob: (id: string) => Promise<Blob | undefined>;
   showToast: (message: string, type?: 'info' | 'success' | 'warn' | 'error') => void;

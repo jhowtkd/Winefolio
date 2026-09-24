@@ -4,7 +4,13 @@ import type { WineDb } from '../repositories/database';
 import { openWineDatabase } from '../repositories/database';
 import { createWineRepository, type WineRepository } from '../repositories/wine-repository';
 import { migrateLegacy } from '../repositories/migration';
-import { exportBackup as doExportBackup, prepareImport, commitImport } from '../repositories/transfer';
+import {
+  exportBackup as doExportBackup,
+  prepareImport,
+  commitImport,
+  type ImportPreview,
+  type ImportDecisions,
+} from '../repositories/transfer';
 import type {
   WineEntry,
   EntryDraft,
@@ -16,6 +22,7 @@ import { createPreferences } from '../domain/preferences';
 import { motionDataset } from '../domain/motion';
 import { applyDemoFavorites } from '../domain/demo-visibility';
 import { EMPTY_BACKUP_STATUS, isBackupDue, type BackupStatus } from '../domain/backup-reminder';
+import { defaultImportDecisions } from '../domain/import-decisions';
 import { ensurePersistentStorage, readPersistentStorage } from './storage-persistence';
 import { getDemoWines } from '../data/demo-wines';
 import { WinefolioContext, type WinefolioContextValue } from './useWinefolio';
@@ -264,26 +271,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [backupStatus, entries]
   );
 
-  const importBackup = useCallback(
-    async (file: File): Promise<{ imported: number; skipped: number }> => {
-      if (!db || !repository) throw new Error('Banco de dados indisponível');
+  const previewImport = useCallback(
+    async (file: File): Promise<{ preview: ImportPreview; defaults: ImportDecisions }> => {
+      if (!repository) throw new Error('Banco de dados indisponível');
       const text = await file.text();
-      const currentSnapshot = await repository.load();
-      const preview = await prepareImport(text, currentSnapshot);
+      const current = await repository.load();
+      const preview = await prepareImport(text, current);
+      return { preview, defaults: defaultImportDecisions(preview, current) };
+    },
+    [repository]
+  );
 
-      const decisions = {
-        records: Object.fromEntries(preview.entries.map((e) => [e.id, 'replace' as const])),
-        draft: 'replace' as const,
-        preferences: 'replace' as const,
-      };
-
+  const confirmImport = useCallback(
+    async (
+      preview: ImportPreview,
+      decisions: ImportDecisions
+    ): Promise<{ imported: number; skipped: number }> => {
+      if (!db || !repository) throw new Error('Banco de dados indisponível');
       const result = await commitImport(db, preview, decisions);
       const reloaded = await repository.load();
-      setEntries(reloaded.entries);
+      setEntries(applyDemoFavorites(reloaded.entries, reloaded.preferences.demoFavorites));
       setDraft(reloaded.draft);
       setPreferences(reloaded.preferences);
-
-      showToast(`Importação concluída: ${result.imported} fichas importadas!`, 'success');
+      showToast(`Importação concluída: ${result.imported} fichas importadas.`, 'success');
       return result;
     },
     [db, repository, showToast]
@@ -333,7 +343,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       discardDraft,
       updatePreferences,
       exportBackup,
-      importBackup,
+      previewImport,
+      confirmImport,
       loadDemoWines,
       readPhotoBlob,
       showToast,
@@ -359,7 +370,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       discardDraft,
       updatePreferences,
       exportBackup,
-      importBackup,
+      previewImport,
+      confirmImport,
       loadDemoWines,
       readPhotoBlob,
       showToast,

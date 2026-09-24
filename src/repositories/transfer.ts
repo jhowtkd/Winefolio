@@ -8,7 +8,10 @@ import type {
 } from '../domain/wine-entry';
 import { adaptLegacy } from './adapters/legacy';
 import { adaptPrototype } from './adapters/prototype';
-import { backupPhotoIds, bytesToBase64 } from '../domain/backup-photos';
+import { backupPhotoIds, bytesToBase64, DRAFT_PHOTO_ID } from '../domain/backup-photos';
+import { normalizeImportedEntry, type ImportDecisions } from '../domain/import-decisions';
+
+export type { ImportDecisions };
 
 export interface ImportConflict {
   id: string;
@@ -29,12 +32,6 @@ export interface ImportPreview {
   warnings: string[];
   sourceDigest: string;
   sourceFormat: 'native-v2' | 'app-v1' | 'prototype-v1';
-}
-
-export interface ImportDecisions {
-  records: Record<string, 'keep-existing' | 'replace'>;
-  draft: 'keep-existing' | 'replace';
-  preferences: 'keep-existing' | 'replace';
 }
 
 function computeDigest(data: string): string {
@@ -108,6 +105,19 @@ export async function prepareImport(
     }
   }
 
+  // Toda ficha passa pelo schema, venha de qual formato vier.
+  const validEntries: WineEntry[] = [];
+  entries.forEach((raw, index) => {
+    const entry = normalizeImportedEntry(raw);
+    if (entry) {
+      validEntries.push(entry);
+    } else {
+      const id = typeof (raw as any)?.id === 'string' && (raw as any).id ? (raw as any).id : `na posição ${index + 1}`;
+      warnings.push(`Ficha ${id} ignorada: formato inválido.`);
+    }
+  });
+  entries = validEntries;
+
   const expectedRevisions: Record<string, number | null> = {};
 
   for (const entry of entries) {
@@ -155,6 +165,9 @@ export async function commitImport(
 
     let imported = 0;
     let skipped = 0;
+    // Só entram as fotos das fichas gravadas. Uma ficha mantida não pode ter
+    // a foto trocada por baixo dela.
+    const importedPhotoIds = new Set<string>();
 
     for (const entry of preview.entries) {
       const current = await recordsStore.get(entry.id);
@@ -177,15 +190,21 @@ export async function commitImport(
         revision: (current?.revision ?? 0) + 1,
         atualizadoEm: Date.now(),
       });
+      if (entry.photoId) importedPhotoIds.add(entry.photoId);
       imported++;
     }
 
+    const replaceDraft = Boolean(preview.draft) && decisions.draft === 'replace';
+    if (replaceDraft) importedPhotoIds.add(DRAFT_PHOTO_ID);
+
     for (const photo of preview.photos) {
-      await photosStore.put(photo.blob, photo.id);
+      if (importedPhotoIds.has(photo.id)) {
+        await photosStore.put(photo.blob, photo.id);
+      }
     }
 
-    if (preview.draft && decisions.draft === 'replace') {
-      await draftsStore.put(preview.draft, 'active');
+    if (replaceDraft) {
+      await draftsStore.put(preview.draft!, 'active');
     }
 
     if (preview.preferences && decisions.preferences === 'replace') {

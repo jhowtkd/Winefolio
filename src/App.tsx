@@ -30,7 +30,8 @@ const AppContent: React.FC = () => {
     discardDraft,
     updatePreferences,
     exportBackup,
-    importBackup,
+    previewImport,
+    confirmImport,
     loadDemoWines,
     readPhotoBlob,
     showToast,
@@ -215,7 +216,8 @@ const AppContent: React.FC = () => {
             preferences={preferences}
             onUpdatePreferences={updatePreferences}
             onExportBackup={exportBackup}
-            onImportBackup={importBackup}
+            onPreviewImport={previewImport}
+            onConfirmImport={confirmImport}
             onLoadDemoWines={loadDemoWines}
             backupStatus={backupStatus}
             storagePersisted={storagePersisted}
