@@ -11,3 +11,5 @@ O plano das funções que ainda faltam está em `docs/superpowers/plans/2026-09-
 ## Lançamento (2026-09-24)
 
 O objetivo do ciclo é lançar pelo Google AI Studio (Cloud Run). O plano está em `docs/superpowers/plans/2026-09-24-launch-readiness.md`, com priorização ICE e critério go/no-go. As tarefas 1 a 5 bloqueiam o lançamento. A tarefa 1 corrige um bug confirmado no Chromium: o backup falha com duas ou mais fotos.
+
+Em 2026-09-24 as 10 tarefas do plano de lançamento foram implementadas na branch `claude/auditoria-features-ice-865qwj`. Falta o merge e o checklist go/no-go do README (Secrets, orçamento, Cloud Run, teste em celular real).
