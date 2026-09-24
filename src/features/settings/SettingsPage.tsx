@@ -89,6 +89,27 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       <div className="settings-list">
         <div className="setting-row">
           <div>
+            <h3>Explorar o caderno</h3>
+            <p>A adega agrupa as fichas por rótulo e safra. As estatísticas resumem o que você bebeu.</p>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" className="btn btn-secondary" onClick={() => onNavigate('#/adega')}>
+              <Icon name="cellar" />
+              Adega
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => onNavigate('#/estatisticas')}
+            >
+              <Icon name="chart" />
+              Estatísticas
+            </button>
+          </div>
+        </div>
+
+        <div className="setting-row">
+          <div>
             <h3>Mostrar coleção de exemplo</h3>
             <p>Seis vinhos e relatos fictícios. Seus registros continuam separados.</p>
           </div>

@@ -68,3 +68,10 @@ html.dark {
     page-break-inside: avoid !important;
   }
 }
+
+/* Adega e Estatísticas não cabem no cabeçalho entre 680 e 1023 px. Ali ficam em Opções. */
+@media (max-width: 1023px) {
+  .header .nav-btn.nav-extra {
+    display: none;
+  }
+}

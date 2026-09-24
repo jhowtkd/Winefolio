@@ -26,8 +26,34 @@ test('esconde as fichas de exemplo quando o ajuste é desligado', async ({ page 
   await page.getByRole('button', { name: 'Carregar', exact: true }).click();
   await expect(page.locator('article.wine-card').first()).toBeVisible();
   await page.goto('/#/ajustes');
-  await page.getByRole('checkbox', { name: 'Mostrar coleção de exemplo' }).uncheck();
-  await expect(page.getByRole('checkbox', { name: 'Mostrar coleção de exemplo' })).not.toBeChecked();
+  // A caixa é controlada: só muda depois que a preferência é gravada.
+  const toggle = page.getByRole('checkbox', { name: 'Mostrar coleção de exemplo' });
+  await toggle.click();
+  await expect(toggle).not.toBeChecked();
   await page.goto('/#/caderno');
   await expect(page.locator('article.wine-card')).toHaveCount(0);
+});
+
+test('chega na adega e nas estatísticas pelo menu', async ({ page, isMobile }) => {
+  await createEntry(page, 'Tinto da Casa');
+  await page.goto('/#/caderno');
+  if (isMobile) {
+    await page.getByRole('navigation', { name: 'Navegação móvel' }).getByRole('button', { name: 'Opções' }).click();
+    await page.getByRole('button', { name: 'Adega', exact: true }).click();
+  } else {
+    await page.getByRole('navigation', { name: 'Principal' }).getByRole('button', { name: 'Adega' }).click();
+  }
+  await expect(page).toHaveURL(/#\/adega$/);
+  await expect(page.getByRole('heading', { name: 'Garrafas do caderno' })).toBeVisible();
+
+  if (isMobile) {
+    await page.getByRole('navigation', { name: 'Navegação móvel' }).getByRole('button', { name: 'Opções' }).click();
+    await page.getByRole('button', { name: 'Estatísticas', exact: true }).click();
+  } else {
+    const nav = page.getByRole('navigation', { name: 'Principal' });
+    await nav.getByRole('button', { name: 'Estatísticas' }).click();
+    await expect(nav.getByRole('button', { name: 'Estatísticas' })).toHaveAttribute('aria-current', 'page');
+  }
+  await expect(page).toHaveURL(/#\/estatisticas$/);
+  await expect(page.getByRole('heading', { name: 'O que o caderno mostra' })).toBeVisible();
 });

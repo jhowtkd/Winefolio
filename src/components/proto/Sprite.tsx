@@ -95,6 +95,12 @@ export const SvgSprite: React.FC = () => (
       <symbol id="i-spark" viewBox="0 0 24 24">
         <path d="m12 3 2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6Z" />
       </symbol>
+      <symbol id="i-cellar" viewBox="0 0 24 24">
+        <path d="M9 3h6M10 3v4.5c-2 1-3 2.6-3 4.5v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-8c0-1.9-1-3.5-3-4.5V3" />
+      </symbol>
+      <symbol id="i-chart" viewBox="0 0 24 24">
+        <path d="M4 20V11M10 20V5M16 20v-6M3 20h18" />
+      </symbol>
       <symbol id="doodle-cork" viewBox="0 0 70 110">
         <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
           <path d="M24 7q11-5 21 0l-1 18q-2 17 10 24l2 49q-19 7-40 0l1-49q12-9 9-23Z" />
