@@ -157,6 +157,8 @@ const AppContent: React.FC = () => {
             }
             onSaveDraft={saveDraft}
             onDiscardDraft={discardDraft}
+            aiConsented={Boolean(preferences.aiConsentAt)}
+            onGrantAiConsent={() => updatePreferences({ aiConsentAt: Date.now() })}
             onNavigate={(hash) => {
               window.location.hash = hash;
             }}
@@ -192,6 +194,8 @@ const AppContent: React.FC = () => {
             }
             onSaveDraft={saveDraft}
             onDiscardDraft={discardDraft}
+            aiConsented={Boolean(preferences.aiConsentAt)}
+            onGrantAiConsent={() => updatePreferences({ aiConsentAt: Date.now() })}
             onNavigate={(hash) => {
               window.location.hash = hash;
             }}

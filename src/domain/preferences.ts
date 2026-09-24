@@ -7,5 +7,6 @@ export function createPreferences(legacyTheme: string | null): Preferences {
     reduceMotion: false,
     showDemo: true,
     demoFavorites: {},
+    aiConsentAt: null,
   };
 }

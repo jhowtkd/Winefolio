@@ -138,6 +138,26 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
         <div className="setting-row">
           <div>
+            <h3>Leitura de rótulo com IA</h3>
+            <p>
+              {preferences.aiConsentAt
+                ? `Permitida desde ${new Date(preferences.aiConsentAt).toLocaleDateString('pt-BR')}. A foto vai ao Google Gemini só quando você pede a leitura.`
+                : 'Pede licença no primeiro uso. Sem licença, a foto fica só neste navegador.'}
+            </p>
+          </div>
+          {preferences.aiConsentAt ? (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => onUpdatePreferences({ aiConsentAt: null })}
+            >
+              Revogar
+            </button>
+          ) : null}
+        </div>
+
+        <div className="setting-row">
+          <div>
             <h3>Traga as fichas de exemplo</h3>
             <p>Carrega a coleção ilustrativa de seis vinhos no seu caderno.</p>
           </div>
@@ -193,9 +213,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       </div>
 
       <div className="settings-note">
-        <strong>Privacidade:</strong> suas notas e fotos ficam apenas neste navegador
-        (IndexedDB <code>winefolio-local</code>). Nada é enviado para servidores sem o seu
-        consentimento.
+        <strong>Privacidade:</strong> suas notas e fotos ficam só neste navegador (IndexedDB{' '}
+        <code>winefolio-local</code>). A foto do rótulo só sai daqui quando você usa a leitura com
+        IA, e vai para o Google Gemini.
       </div>
     </ModalDialog>
   );

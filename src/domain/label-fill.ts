@@ -38,6 +38,54 @@ function asStyle(value: string | undefined): WineStyle | null {
   return null;
 }
 
+/** Campos que a leitura de rótulo pode preencher. Opinião (qualidade, impressão final) fica de fora. */
+export const AI_FILLED_PATHS = [
+  'produtor',
+  'vinho',
+  'safra',
+  'uvas',
+  'regiaoPais',
+  'tipo',
+  'estilo',
+  'temperaturaServico',
+  'decantacao',
+  'visual.corHex',
+  'olfato.aromas',
+  'paladar.alcool',
+  'conclusao.guarda',
+  'conclusao.harmonizacao',
+] as const;
+
+/** Lê o campo tratando `undefined` e `null` como texto vazio. */
+function readPath(entry: WineEntry, path: string): unknown {
+  const value = path.split('.').reduce<any>((current, key) => current?.[key], entry);
+  return value ?? '';
+}
+
+function markChanged(before: WineEntry, after: WineEntry): WineEntry {
+  const provenance = { ...after.provenance };
+  for (const path of AI_FILLED_PATHS) {
+    const value = readPath(after, path);
+    if (value !== '' && value !== readPath(before, path)) provenance[path] = 'ai-unverified';
+  }
+  return { ...after, provenance };
+}
+
+/** O que a pessoa mudou depois da leitura deixa de ser sugestão da IA. */
+export function settleAiProvenance(entry: WineEntry, aiSnapshot: WineEntry): WineEntry {
+  const provenance = { ...entry.provenance };
+  for (const path of AI_FILLED_PATHS) {
+    if (provenance[path] === 'ai-unverified' && readPath(entry, path) !== readPath(aiSnapshot, path)) {
+      provenance[path] = 'user';
+    }
+  }
+  return { ...entry, provenance };
+}
+
+export function aiSuggestedFields(entry: WineEntry): string[] {
+  return AI_FILLED_PATHS.filter((path) => entry.provenance?.[path] === 'ai-unverified');
+}
+
 export function applyLabelAnalysis(entry: WineEntry, analysis: LabelAnalysis): WineEntry {
   const regiaoPais = keep(entry.regiaoPais, analysis.regiaoPais);
   const aromas = keep(entry.olfato.aromas, analysis.aromasSugeridos);
@@ -50,7 +98,7 @@ export function applyLabelAnalysis(entry: WineEntry, analysis: LabelAnalysis): W
           .filter(Boolean);
   const tipo = asType(analysis.tipo) ?? entry.tipo;
   const estilo = asStyle(analysis.estilo) ?? entry.estilo;
-  return {
+  const next: WineEntry = {
     ...entry,
     produtor: keep(entry.produtor, analysis.produtor),
     vinho: keep(entry.vinho, analysis.vinho),
@@ -73,8 +121,7 @@ export function applyLabelAnalysis(entry: WineEntry, analysis: LabelAnalysis): W
       ...entry.conclusao,
       guarda: keep(entry.conclusao.guarda, analysis.potencialGuarda),
       harmonizacao: keep(entry.conclusao.harmonizacao, analysis.harmonizacaoSugerida),
-      qualidade: keep(entry.conclusao.qualidade, analysis.qualidadeEstimada),
-      impressaoFinal: keep(entry.conclusao.impressaoFinal, analysis.resumo),
     },
   };
+  return markChanged(entry, next);
 }

@@ -25,6 +25,7 @@ import {
   CircleDollarSign,
   Tag,
 } from 'lucide-react';
+import { aiSuggestedFields } from '../../domain/label-fill';
 
 interface TastingSheetDetailsProps {
   entry: WineEntry;
@@ -35,6 +36,23 @@ interface TastingSheetDetailsProps {
   onToggleFavorite: (entry: WineEntry) => void;
   onDelete: (id: string, revision: number) => Promise<void>;
 }
+
+const AI_FIELD_LABELS: Record<string, string> = {
+  produtor: 'produtor',
+  vinho: 'vinho',
+  safra: 'safra',
+  uvas: 'uvas',
+  regiaoPais: 'região',
+  tipo: 'tipo',
+  estilo: 'estilo',
+  temperaturaServico: 'temperatura',
+  decantacao: 'decantação',
+  'visual.corHex': 'cor',
+  'olfato.aromas': 'aromas',
+  'paladar.alcool': 'álcool',
+  'conclusao.guarda': 'guarda',
+  'conclusao.harmonizacao': 'harmonização',
+};
 
 export const TastingSheetDetails: React.FC<TastingSheetDetailsProps> = ({
   entry,
@@ -494,6 +512,16 @@ export const TastingSheetDetails: React.FC<TastingSheetDetailsProps> = ({
                     </span>
                   </div>
                 </div>
+              )}
+
+              {aiSuggestedFields(entry).length > 0 && (
+                <p className="pt-2 text-[10px] text-[#6b6458] dark:text-[#9e9687]">
+                  Sugerido pela IA e não revisado:{' '}
+                  {aiSuggestedFields(entry)
+                    .map((path) => AI_FIELD_LABELS[path] ?? path)
+                    .join(', ')}
+                  .
+                </p>
               )}
             </div>
           </div>

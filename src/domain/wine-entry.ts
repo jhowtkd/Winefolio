@@ -105,6 +105,8 @@ export interface Preferences {
   reduceMotion: boolean;
   showDemo: boolean;
   demoFavorites: Record<string, boolean>;
+  /** Quando a pessoa aceitou enviar fotos de rótulo ao Gemini. Ausente em dados antigos. */
+  aiConsentAt: number | null;
 }
 
 export interface StoreSnapshot {
