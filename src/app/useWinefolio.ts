@@ -30,7 +30,14 @@ export interface WinefolioContextValue {
   ) => Promise<{ imported: number; skipped: number }>;
   loadDemoWines: () => Promise<void>;
   readPhotoBlob: (id: string) => Promise<Blob | undefined>;
-  showToast: (message: string, type?: 'info' | 'success' | 'warn' | 'error') => void;
+  showToast: (
+    message: string,
+    type?: 'info' | 'success' | 'warn' | 'error',
+    options?: {
+      action?: { label: string; run: () => void };
+      durationMs?: number;
+    }
+  ) => void;
   activeEntry: WineEntry | null;
   loading: boolean;
   error: string | null;

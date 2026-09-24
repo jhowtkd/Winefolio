@@ -57,3 +57,31 @@ test('chega na adega e nas estatísticas pelo menu', async ({ page, isMobile }) 
   await expect(page).toHaveURL(/#\/estatisticas$/);
   await expect(page.getByRole('heading', { name: 'O que o caderno mostra' })).toBeVisible();
 });
+
+async function deleteEntry(page: import('@playwright/test').Page, name: string) {
+  await page.goto('/#/caderno');
+  await page.getByRole('button', { name: `Abrir ficha de ${name}` }).click();
+  await page.getByRole('button', { name: 'Excluir ficha' }).click();
+  await page.getByRole('button', { name: 'Sim, excluir' }).click();
+  await expect(page).toHaveURL(/#\/caderno/);
+  await expect(card(page, name)).toHaveCount(0);
+}
+
+test('excluir pode ser desfeito', async ({ page }) => {
+  await createEntry(page, 'Rosé da Praia');
+  await deleteEntry(page, 'Rosé da Praia');
+  await page.getByRole('button', { name: 'Desfazer' }).click();
+  await expect(card(page, 'Rosé da Praia')).toBeVisible();
+  await page.waitForTimeout(6_500);
+  await page.reload();
+  await expect(card(page, 'Rosé da Praia')).toBeVisible();
+});
+
+test('sem desfazer, a exclusão vale depois do prazo', async ({ page }) => {
+  await createEntry(page, 'Rosé da Praia');
+  await deleteEntry(page, 'Rosé da Praia');
+  await expect(page.getByRole('button', { name: 'Desfazer' })).toBeHidden({ timeout: 8_000 });
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
+  await expect(card(page, 'Rosé da Praia')).toHaveCount(0);
+});

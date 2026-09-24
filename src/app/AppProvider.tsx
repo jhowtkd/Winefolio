@@ -2,7 +2,12 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import type { IDBPDatabase } from 'idb';
 import type { WineDb } from '../repositories/database';
 import { openWineDatabase } from '../repositories/database';
-import { createWineRepository, type WineRepository } from '../repositories/wine-repository';
+import {
+  createWineRepository,
+  RevisionConflictError,
+  MissingEntryError,
+  type WineRepository,
+} from '../repositories/wine-repository';
 import { migrateLegacy } from '../repositories/migration';
 import {
   exportBackup as doExportBackup,
@@ -30,11 +35,22 @@ import { parseHash, formatHash, type AppRoute } from './navigation';
 import { RecoveryScreen } from './RecoveryScreen';
 import { Icon } from '../components/proto/Sprite';
 
+type ToastType = 'info' | 'success' | 'warn' | 'error';
+
+export interface ToastOptions {
+  action?: { label: string; run: () => void };
+  durationMs?: number;
+}
+
 interface ToastState {
   id: number;
   message: string;
-  type: 'info' | 'success' | 'warn' | 'error';
+  type: ToastType;
+  action?: ToastOptions['action'];
 }
+
+/** Tempo para desfazer uma exclusão antes de ela ir para o IndexedDB. */
+const UNDO_DELETE_MS = 6000;
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [db, setDb] = useState<IDBPDatabase<WineDb> | null>(null);
@@ -59,12 +75,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [storagePersisted, setStoragePersisted] = useState<boolean | null>(null);
   const persistRequested = useRef(false);
 
+  const toastSeq = useRef(0);
   const showToast = useCallback(
-    (message: string, type: 'info' | 'success' | 'warn' | 'error' = 'info') => {
-      setToast({ id: Date.now(), message, type });
+    (message: string, type: ToastType = 'info', options: ToastOptions = {}) => {
+      const id = ++toastSeq.current;
+      setToast({ id, message, type, action: options.action });
       setTimeout(() => {
-        setToast((curr) => (curr && curr.message === message ? null : curr));
-      }, 4000);
+        setToast((curr) => (curr && curr.id === id ? null : curr));
+      }, options.durationMs ?? 4000);
     },
     []
   );
@@ -219,15 +237,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [repository, showToast, preferences.demoFavorites, updatePreferences]
   );
 
+  // Exclusão com desfazer: a ficha some da tela na hora e só sai do IndexedDB
+  // depois de UNDO_DELETE_MS, numa nova exclusão ou quando a aba é escondida.
+  const entriesRef = useRef(entries);
+  entriesRef.current = entries;
+  const pendingDeletion = useRef<{ entry: WineEntry; timer: ReturnType<typeof setTimeout> } | null>(null);
+
+  const flushPendingDeletion = useCallback(async (): Promise<void> => {
+    const pending = pendingDeletion.current;
+    if (!pending || !repository) return;
+    pendingDeletion.current = null;
+    clearTimeout(pending.timer);
+    try {
+      await repository.removeEntry(pending.entry.id, pending.entry.revision);
+    } catch {
+      setEntries((prev) =>
+        prev.some((e) => e.id === pending.entry.id) ? prev : [pending.entry, ...prev]
+      );
+      showToast('Não foi possível excluir a ficha. Ela voltou para o caderno.', 'error');
+    }
+  }, [repository, showToast]);
+
+  const undoDeletion = useCallback(
+    (id: string) => {
+      const pending = pendingDeletion.current;
+      if (!pending || pending.entry.id !== id) return;
+      clearTimeout(pending.timer);
+      pendingDeletion.current = null;
+      setEntries((prev) => (prev.some((e) => e.id === id) ? prev : [pending.entry, ...prev]));
+      showToast('Ficha restaurada.', 'success');
+    },
+    [showToast]
+  );
+
   const removeEntry = useCallback(
     async (id: string, expectedRevision: number): Promise<void> => {
       if (!repository) throw new Error('Repositório não inicializado');
-      await repository.removeEntry(id, expectedRevision);
+      await flushPendingDeletion();
+      const entry = entriesRef.current.find((e) => e.id === id);
+      if (!entry) throw new MissingEntryError();
+      if (entry.revision !== expectedRevision) throw new RevisionConflictError();
+
       setEntries((prev) => prev.filter((e) => e.id !== id));
-      showToast('Ficha de degustação excluída.', 'info');
+      const timer = setTimeout(() => void flushPendingDeletion(), UNDO_DELETE_MS);
+      pendingDeletion.current = { entry, timer };
+      showToast('Ficha excluída.', 'info', {
+        durationMs: UNDO_DELETE_MS,
+        action: { label: 'Desfazer', run: () => undoDeletion(id) },
+      });
     },
-    [repository, showToast]
+    [repository, flushPendingDeletion, undoDeletion, showToast]
   );
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') void flushPendingDeletion();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [flushPendingDeletion]);
 
   const saveDraft = useCallback(
     async (d: EntryDraft, photo: PhotoChange): Promise<void> => {
@@ -401,6 +469,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           <div>
             <strong>{toast.message}</strong>
           </div>
+          {toast.action && (
+            <button type="button" className="toast-action" onClick={toast.action.run}>
+              {toast.action.label}
+            </button>
+          )}
           <button type="button" aria-label="Fechar aviso" onClick={() => setToast(null)}>
             <Icon name="close" />
           </button>

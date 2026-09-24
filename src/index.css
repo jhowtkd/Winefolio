@@ -75,3 +75,12 @@ html.dark {
     display: none;
   }
 }
+
+.toast .toast-action {
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  color: #dfc8a0;
+  padding: 4px 6px;
+  min-height: 32px;
+}
