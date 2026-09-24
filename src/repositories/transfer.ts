@@ -8,6 +8,7 @@ import type {
 } from '../domain/wine-entry';
 import { adaptLegacy } from './adapters/legacy';
 import { adaptPrototype } from './adapters/prototype';
+import { backupPhotoIds, bytesToBase64 } from '../domain/backup-photos';
 
 export interface ImportConflict {
   id: string;
@@ -203,38 +204,35 @@ export async function commitImport(
 }
 
 export async function exportBackup(db: IDBPDatabase<WineDb>): Promise<Blob> {
+  // Todos os pedidos saem no mesmo tick. Esperar qualquer promessa que não seja
+  // do IndexedDB dentro da transação faz o navegador fechá-la.
   const tx = db.transaction(['records', 'photos', 'drafts', 'settings'], 'readonly');
-  const records = await tx.objectStore('records').getAll();
-  const draft = await tx.objectStore('drafts').get('active');
-  const preferences = await tx.objectStore('settings').get('preferences');
+  const photoStore = tx.objectStore('photos');
+  const [records, draft, preferences, photoKeys, photoBlobs] = await Promise.all([
+    tx.objectStore('records').getAll(),
+    tx.objectStore('drafts').get('active'),
+    tx.objectStore('settings').get('preferences'),
+    photoStore.getAllKeys(),
+    photoStore.getAll(),
+    tx.done,
+  ]);
 
-  const photoKeys = await tx.objectStore('photos').getAllKeys();
+  const entries = records.filter((r) => r.kind !== 'demo');
+  const wanted = backupPhotoIds(entries, draft ?? null);
   const photosData: Array<{ id: string; mimeType: string; base64: string }> = [];
-
-  for (const key of photoKeys) {
-    const blob = await tx.objectStore('photos').get(key);
-    if (blob) {
-      const buffer = await blob.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
-      let binary = '';
-      for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      photosData.push({
-        id: String(key),
-        mimeType: blob.type,
-        base64: btoa(binary),
-      });
-    }
+  for (let i = 0; i < photoKeys.length; i++) {
+    const id = String(photoKeys[i]);
+    const blob = photoBlobs[i];
+    if (!blob || !wanted.has(id)) continue;
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    photosData.push({ id, mimeType: blob.type, base64: bytesToBase64(bytes) });
   }
-
-  await tx.done;
 
   const backupObject = {
     format: 'winefolio',
     version: 2,
     exportedAt: new Date().toISOString(),
-    entries: records.filter((r) => r.kind !== 'demo'),
+    entries,
     draft: draft || null,
     preferences: preferences || null,
     photos: photosData,
