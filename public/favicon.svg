@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 110">
+  <style>g{color:#793b46}@media (prefers-color-scheme: dark){g{color:#e7b3bc}}</style>
+  
+  <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round">
+    <path d="M24 7q11-5 21 0l-1 18q-2 17 10 24l2 49q-19 7-40 0l1-49q12-9 9-23Z" />
+    <path d="M24 12q10 3 21 0M25 25h19M17 61q20 3 38 0M16 84q18 4 39 0M21 52v42M39 36l7 12" />
+    <path d="M32 67q12-6 14 3t-11 8q-9-3-3-11Z" />
+  </g>
+</svg>
