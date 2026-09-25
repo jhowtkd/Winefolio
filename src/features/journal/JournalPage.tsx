@@ -28,6 +28,8 @@ interface JournalPageProps {
   draft: EntryDraft | null;
   readPhoto: (id: string) => Promise<Blob | undefined>;
   route: Extract<AppRoute, { kind: 'journal' }>;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
   onSelectEntry: (entry: WineEntry) => void;
   onToggleFavorite: (entry: WineEntry) => void;
   onNewEntry: () => void;
@@ -48,6 +50,8 @@ export const JournalPage: React.FC<JournalPageProps> = ({
   draft,
   readPhoto,
   route,
+  searchQuery,
+  onSearchChange,
   onSelectEntry,
   onToggleFavorite,
   onNewEntry,
@@ -69,7 +73,16 @@ export const JournalPage: React.FC<JournalPageProps> = ({
   const [filterOverride, setFilterOverride] = useState<JournalFilter | null>(null);
   const activeFilter = filterOverride ?? filter;
 
-  const [query, setQuery] = useState(route.search ?? '');
+  const [internalQuery, setInternalQuery] = useState(route.search ?? '');
+  const query = searchQuery !== undefined ? searchQuery : internalQuery;
+
+  React.useEffect(() => {
+    if (route.search !== undefined && route.search !== query) {
+      setInternalQuery(route.search);
+      onSearchChange?.(route.search);
+    }
+  }, [route.search]);
+
   const [layout, setLayout] = useState<Layout>('cards');
   const [sort, setSort] = useState<Sort>('recent');
 
@@ -109,7 +122,8 @@ export const JournalPage: React.FC<JournalPageProps> = ({
         : '';
 
   const clearContext = () => {
-    setQuery('');
+    setInternalQuery('');
+    onSearchChange?.('');
     onNavigate({ kind: 'journal', tab: 'all' });
   };
 
@@ -289,10 +303,20 @@ export const JournalPage: React.FC<JournalPageProps> = ({
                 placeholder="Encontre uma boa memória..."
                 autoComplete="off"
                 value={query}
-                onChange={(ev) => setQuery(ev.target.value)}
+                onChange={(ev) => {
+                  setInternalQuery(ev.target.value);
+                  onSearchChange?.(ev.target.value);
+                }}
               />
               {query && (
-                <button type="button" aria-label="Limpar busca" onClick={() => setQuery('')}>
+                <button
+                  type="button"
+                  aria-label="Limpar busca"
+                  onClick={() => {
+                    setInternalQuery('');
+                    onSearchChange?.('');
+                  }}
+                >
                   <Icon name="close" aria-hidden="true" />
                 </button>
               )}

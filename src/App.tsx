@@ -68,6 +68,19 @@ const AppContent: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  const [searchQuery, setSearchQuery] = React.useState(() => {
+    if (activeRoute.kind === 'journal') {
+      return activeRoute.search ?? '';
+    }
+    return '';
+  });
+
+  React.useEffect(() => {
+    if (activeRoute.kind === 'journal') {
+      setSearchQuery(activeRoute.search ?? '');
+    }
+  }, [activeRoute.kind, activeRoute.kind === 'journal' ? activeRoute.search : undefined]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -85,6 +98,24 @@ const AppContent: React.FC = () => {
   const ownEntries = entries.filter((e) => !e._demo);
   const demoEntries = getDemoWines();
 
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    if (activeRoute.kind === 'journal') {
+      const clean = query.trim();
+      const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
+      if (clean) {
+        params.set('q', clean);
+      } else {
+        params.delete('q');
+      }
+      const newQueryString = params.toString();
+      const newHash = newQueryString ? `#/caderno?${newQueryString}` : '#/caderno';
+      if (window.location.hash !== newHash) {
+        window.history.replaceState(null, '', newHash);
+      }
+    }
+  };
+
   const templateEntry =
     activeRoute.kind === 'new' && activeRoute.fromTemplateId
       ? entries.find((e) => e.id === activeRoute.fromTemplateId) || null
@@ -101,6 +132,8 @@ const AppContent: React.FC = () => {
       draft={draft}
       readPhoto={readPhotoBlob}
       route={activeRoute.kind === 'journal' ? activeRoute : { kind: 'journal', tab: 'all' }}
+      searchQuery={searchQuery}
+      onSearchChange={handleSearchChange}
       onSelectEntry={(entry) => navigate({ kind: 'entry', id: entry.id, mode: 'view' })}
       onToggleFavorite={(entry) => setFavorite(entry.id, !entry.favorite, entry.revision)}
       onNewEntry={() => navigate({ kind: 'new' })}
@@ -120,6 +153,10 @@ const AppContent: React.FC = () => {
       <SvgSprite />
       <Header
         activeRoute={activeRoute}
+        entries={shown}
+        searchQuery={searchQuery}
+        onSearchChange={handleSearchChange}
+        onSelectEntry={(id) => navigate({ kind: 'entry', id, mode: 'view' })}
         onNavigate={(hash) => {
           window.location.hash = hash;
         }}

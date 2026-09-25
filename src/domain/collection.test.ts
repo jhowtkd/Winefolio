@@ -20,6 +20,28 @@ describe('Collection domain tests', () => {
     assert.strictEqual(results[0].produtor, 'Quinta do Vento');
   });
 
+  it('filtra entradas por nome do vinho, produtor ou safra', () => {
+    // Por nome do vinho
+    const byWine = filterAndSortEntries(demos, { query: 'Casa do Vento' });
+    assert.strictEqual(byWine.length, 1);
+    assert.strictEqual(byWine[0].vinho, 'Casa do Vento');
+
+    // Por produtor
+    const byProducer = filterAndSortEntries(demos, { query: 'Bodega La Loma' });
+    assert.strictEqual(byProducer.length, 1);
+    assert.strictEqual(byProducer[0].produtor, 'Bodega La Loma');
+
+    // Por safra
+    const byVintage = filterAndSortEntries(demos, { query: '2022' });
+    assert.ok(byVintage.length >= 1);
+    assert.ok(byVintage.some((w) => w.safra === '2022'));
+
+    // Combinado: produtor + safra
+    const combined = filterAndSortEntries(demos, { query: 'Vento 2022' });
+    assert.strictEqual(combined.length, 1);
+    assert.strictEqual(combined[0].vinho, 'Casa do Vento');
+  });
+
   it('filtra por nota exata e por tag', () => {
     const five = filterAndSortEntries(demos, { rating: 5 });
     assert.strictEqual(five.length, 2);

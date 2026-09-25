@@ -77,6 +77,7 @@ export function filterAndSortEntries(entries: WineEntry[], options: FilterOption
 
     // Texto de busca
     if (q) {
+      const tokens = q.split(/\s+/).filter(Boolean);
       const haystack = [
         entry.vinho,
         entry.produtor,
@@ -94,7 +95,7 @@ export function filterAndSortEntries(entries: WineEntry[], options: FilterOption
         .join(' ')
         .toLowerCase();
 
-      if (!haystack.includes(q)) return false;
+      if (!tokens.every((token) => haystack.includes(token))) return false;
     }
 
     return true;

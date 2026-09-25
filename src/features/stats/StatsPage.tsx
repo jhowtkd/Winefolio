@@ -3,8 +3,6 @@ import type { WineEntry } from '../../domain/wine-entry';
 import { getAromaFrequencies, getCollectionStats } from '../../domain/collection';
 import {
   countryBreakdown,
-  grapeBreakdown,
-  ratingDistribution,
   styleBreakdown,
   tastingsByMonth,
 } from '../../domain/insights';
@@ -13,6 +11,7 @@ import { PaperSurface } from '../../components/ui/PaperSurface';
 import { PaperButton } from '../../components/ui/PaperButton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { BarChart3 } from 'lucide-react';
+import { WineStatsDashboard } from './WineStatsDashboard';
 
 interface StatsPageProps {
   entries: WineEntry[];
@@ -34,16 +33,12 @@ const Meter: React.FC<{ label: string; count: number; max: number }> = ({ label,
 
 export const StatsPage: React.FC<StatsPageProps> = ({ entries, onOpenJournal }) => {
   const stats = useMemo(() => getCollectionStats(entries), [entries]);
-  const ratings = useMemo(() => ratingDistribution(entries), [entries]);
   const styles = useMemo(() => styleBreakdown(entries), [entries]);
-  const grapes = useMemo(() => grapeBreakdown(entries), [entries]);
   const countries = useMemo(() => countryBreakdown(entries), [entries]);
   const months = useMemo(() => tastingsByMonth(entries), [entries]);
   const aromas = useMemo(() => getAromaFrequencies(entries).slice(0, 12), [entries]);
 
-  const maxRating = Math.max(1, ...ratings.map((item) => item.count));
   const maxStyle = Math.max(1, ...styles.map((item) => item.count));
-  const maxGrape = Math.max(1, ...grapes.map((item) => item.count));
   const maxCountry = Math.max(1, ...countries.map((item) => item.count));
   const maxMonth = Math.max(1, ...months.map((item) => item.count));
 
@@ -90,28 +85,16 @@ export const StatsPage: React.FC<StatsPageProps> = ({ entries, onOpenJournal }) 
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <PaperSurface className="p-5 space-y-4">
-          <h2 className="font-serif text-xl">Notas</h2>
-          {ratings.map((bucket) => (
-            <Meter key={bucket.stars} label={`${bucket.stars} estrela${bucket.stars > 1 ? 's' : ''}`} count={bucket.count} max={maxRating} />
-          ))}
-        </PaperSurface>
+      {/* Painel com gráficos Recharts: Variedades de Uvas e Distribuição de Notas */}
+      <WineStatsDashboard entries={entries} />
 
+      {/* Estilos e Países */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <PaperSurface className="p-5 space-y-4">
           <h2 className="font-serif text-xl">Estilos</h2>
           {styles.map((item) => (
             <Meter key={item.name} label={item.name} count={item.count} max={maxStyle} />
           ))}
-        </PaperSurface>
-
-        <PaperSurface className="p-5 space-y-4">
-          <h2 className="font-serif text-xl">Uvas</h2>
-          {grapes.length === 0 ? (
-            <p className="text-sm text-[#6b6458]">Nenhuma uva informada.</p>
-          ) : (
-            grapes.map((item) => <Meter key={item.name} label={item.name} count={item.count} max={maxGrape} />)
-          )}
         </PaperSurface>
 
         <PaperSurface className="p-5 space-y-4">
