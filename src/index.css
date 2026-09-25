@@ -360,8 +360,11 @@ html.dark .header-dropdown-footer:hover {
 }
 
 @media (max-width: 679px) {
+  /* Sem min-width, a busca encolhe; com ela, fontes mais largas empurram a página
+     para além da tela e o celular reduz o zoom. */
   .header-search-wrap {
     max-width: 190px;
+    min-width: 0;
     margin: 0 4px;
   }
   .header-search-input {

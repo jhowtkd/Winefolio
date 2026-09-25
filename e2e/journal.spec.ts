@@ -59,6 +59,22 @@ test('chega na adega e nas estatísticas pelo menu', async ({ page, isMobile }) 
   await expect(page.getByRole('heading', { name: 'O que o caderno mostra' })).toBeVisible();
 });
 
+test('no celular, fontes mais largas não empurram a página para fora da tela', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'O cabeçalho estreito só existe no celular.');
+  await page.addInitScript(() =>
+    document.addEventListener('DOMContentLoaded', () => {
+      const style = document.createElement('style');
+      style.textContent = '* { letter-spacing: .12em !important; }';
+      document.head.appendChild(style);
+    })
+  );
+  await page.goto('/#/caderno');
+  await expect(page.getByRole('navigation', { name: 'Navegação móvel' })).toBeVisible();
+  // Quando a página transborda, o Chrome móvel alarga a janela de layout: compara com a tela.
+  const width = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(width).toBeLessThanOrEqual(page.viewportSize()!.width);
+});
+
 async function deleteEntry(page: import('@playwright/test').Page, name: string) {
   await page.goto('/#/caderno');
   await page.getByRole('button', { name: `Abrir ficha de ${name}` }).click();
