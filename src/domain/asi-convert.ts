@@ -179,8 +179,9 @@ export function convertTannin(
   text: string
 ): Converted<{ level: Level3 | null; quality: Array<'silky'> }> | null {
   const term = normalizeTerm(text);
+  // A grade não tem "sem tanino": o campo fica vazio e o texto guarda a observação.
   if (term === 'nulo / nao tem' || term === 'nulo' || term === 'nao tem') {
-    return ok({ level: null, quality: [] });
+    return partial({ level: null, quality: [] });
   }
   const levels: Record<string, Level3> = { baixo: 'low', medio: 'medium', alto: 'high' };
   let level: Level3 | null = null;
@@ -222,8 +223,8 @@ export function convertAlcohol(
 
 /** "16°C - 18°C" vira {16, 18}. Um número só vira faixa de um grau. */
 export function parseTemperature(text: string): Converted<TemperatureRange> | null {
-  const numbers = [...text.matchAll(/(\d{1,2})(?:[.,]\d)?/g)]
-    .map((m) => Number(m[1]))
+  const numbers = [...text.matchAll(/\d{1,2}(?:[.,]\d)?/g)]
+    .map((m) => Number(m[0].replace(',', '.')))
     .filter((n) => n <= 30);
   if (numbers.length === 0) return null;
   const min = Math.min(...numbers.slice(0, 2));

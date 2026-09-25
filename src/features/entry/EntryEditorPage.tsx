@@ -22,13 +22,19 @@ import { analyzeWineLabelPhoto } from '../../services/wineOcrService';
 import { dataUrlToBlob } from '../../utils/imageUtils';
 import { usePhotoUrl } from '../journal/usePhotoUrl';
 import {
-  coreColoursFor,
   CORE_COLOURS,
   WINE_STYLES,
   WINE_TYPES,
 } from '../../domain/asi-vocabulary';
 import { AROMA_GROUPS } from '../../domain/aroma-catalog';
-import { isSectionVisible, setPath, SHEET_SECTIONS, type AsiFieldDef, type SheetSection } from '../../domain/asi-fields';
+import {
+  isSectionVisible,
+  setPath,
+  SHEET_SECTIONS,
+  withStyle,
+  type AsiFieldDef,
+  type SheetSection,
+} from '../../domain/asi-fields';
 import { chipClass, FieldTitle, LegacyNote, SectionFields } from './AsiFields';
 import {
   Save,
@@ -807,18 +813,7 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
                       value={formData.estilo ?? ''}
                       onChange={(e) => {
                         const estilo = (e.target.value as WineStyle) || null;
-                        setFormData((prev) => {
-                          // A cor escolhida precisa existir na escala do novo estilo.
-                          const keepColour = coreColoursFor(estilo).some((c) => c.code === prev.visual.coreColour);
-                          return {
-                            ...prev,
-                            estilo,
-                            skinContact: estilo === 'branco' ? prev.skinContact : false,
-                            visual: keepColour
-                              ? prev.visual
-                              : { ...prev.visual, coreColour: null, corHex: prev.visual.coreColour ? undefined : prev.visual.corHex },
-                          };
-                        });
+                        setFormData((prev) => withStyle(prev, estilo));
                       }}
                       className="w-full px-3 py-2 text-xs sm:text-sm rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] text-[#312d26] dark:text-[#eee7db]"
                     >

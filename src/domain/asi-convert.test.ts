@@ -144,6 +144,12 @@ describe('upgradeToV3', () => {
     assert.strictEqual(next.visual.coreColour, null);
   });
 
+  it('guarda o tanino "Nulo / Não tem", que a grade não representa', () => {
+    const next = upgradeToV3(v2({ paladar: { tanino: 'Nulo / Não tem' } }));
+    assert.strictEqual(next.paladar.tanninLevel, null);
+    assert.strictEqual(next.legacyNotes['paladar.tanninLevel'], 'Nulo / Não tem');
+  });
+
   it('não confunde cor de outro estilo', () => {
     const next = upgradeToV3(v2({ estilo: 'tinto', visual: { corNucleoBorda: 'Palha' } }));
     assert.strictEqual(next.visual.coreColour, null);
@@ -161,7 +167,7 @@ describe('conversões por campo', () => {
   it('tanino', () => {
     assert.deepStrictEqual(convertTannin('Alto e sedoso')?.value, { level: 'high', quality: ['silky'] });
     assert.deepStrictEqual(convertTannin('Sedoso')?.value, { level: null, quality: ['silky'] });
-    assert.deepStrictEqual(convertTannin('Nulo / Não tem')?.value, { level: null, quality: [] });
+    assert.deepStrictEqual(convertTannin('Nulo / Não tem'), { value: { level: null, quality: [] }, lossless: false });
     assert.strictEqual(convertTannin('Médio+'), null);
     assert.strictEqual(convertTannin('Adstringente'), null);
   });
@@ -194,6 +200,7 @@ describe('conversões por campo', () => {
     assert.deepStrictEqual(parseTemperature('16°C - 18°C')?.value, { min: 16, max: 18 });
     assert.deepStrictEqual(parseTemperature('16-18')?.value, { min: 16, max: 18 });
     assert.deepStrictEqual(parseTemperature('12 °C')?.value, { min: 12, max: 12 });
+    assert.deepStrictEqual(parseTemperature('12,5°C - 14°C')?.value, { min: 12.5, max: 14 });
     assert.strictEqual(parseTemperature('Temperatura ambiente'), null);
   });
 

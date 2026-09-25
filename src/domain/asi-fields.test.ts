@@ -9,6 +9,7 @@ import {
   orphanNotes,
   setPath,
   visibleFields,
+  withStyle,
 } from './asi-fields.js';
 import type { WineEntry } from './wine-entry.js';
 
@@ -102,6 +103,8 @@ describe('displayValue', () => {
     assert.deepStrictEqual(displayValue(red, fieldAt('visual.coreColour')!), [{ pt: 'Marrom', en: 'Brown' }]);
     const served = setPath(entry, 'servico.temperature', { min: 16, max: 18 });
     assert.deepStrictEqual(displayValue(served, fieldAt('servico.temperature')!), [{ pt: '16 a 18 °C' }]);
+    const decimal = setPath(entry, 'servico.temperature', { min: 12.5, max: 14 });
+    assert.deepStrictEqual(displayValue(decimal, fieldAt('servico.temperature')!), [{ pt: '12,5 a 14 °C' }]);
     assert.strictEqual(displayValue(entry, fieldAt('paladar.body')!), null);
   });
 
@@ -109,5 +112,33 @@ describe('displayValue', () => {
     const entry = { ...createEntry('x'), legacyNotes: { 'visual.transparencia': 'Opaco', 'paladar.acidity': 'Média+' } };
     assert.deepStrictEqual(orphanNotes(entry, 'visual'), [{ path: 'visual.transparencia', pt: 'Transparência', text: 'Opaco' }]);
     assert.deepStrictEqual(orphanNotes(entry, 'paladar'), []);
+  });
+});
+
+describe('withStyle', () => {
+  const coloured = (estilo: 'branco' | 'tinto', code: string, hex: string) => {
+    const entry = { ...createEntry('x'), estilo };
+    return { ...entry, visual: { ...entry.visual, coreColour: code as any, corHex: hex } };
+  };
+
+  it('recalcula o tom do Marrom, que existe no branco e no tinto', () => {
+    const next = withStyle(coloured('branco', 'brown', '#8A5A2B'), 'tinto');
+    assert.deepStrictEqual([next.visual.coreColour, next.visual.corHex], ['brown', '#5A3320']);
+  });
+
+  it('tira a cor que não existe no novo estilo, com o hex que veio dela', () => {
+    const next = withStyle(coloured('branco', 'straw', '#F3E99F'), 'tinto');
+    assert.deepStrictEqual([next.visual.coreColour, next.visual.corHex], [null, undefined]);
+  });
+
+  it('mantém um hex que não veio da cor escolhida', () => {
+    const next = withStyle(coloured('branco', 'brown', '#123456'), 'tinto');
+    assert.strictEqual(next.visual.corHex, '#123456');
+  });
+
+  it('só branco guarda o contato com as cascas', () => {
+    const orange = { ...createEntry('x'), estilo: 'branco' as const, skinContact: true };
+    assert.strictEqual(withStyle(orange, 'tinto').skinContact, false);
+    assert.strictEqual(withStyle(orange, 'branco').skinContact, true);
   });
 });

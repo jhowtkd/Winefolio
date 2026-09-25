@@ -3,7 +3,7 @@
  * regra de quando se aplicam. O editor, a ficha de leitura e a regra de
  * visibilidade leem esta lista.
  */
-import type { SheetLevel, WineEntry } from './wine-entry';
+import type { SheetLevel, WineEntry, WineStyle } from './wine-entry';
 import {
   ACIDITY,
   AGEING,
@@ -16,6 +16,7 @@ import {
   CLIMATE,
   CLIMATE_TYPE,
   CONDITION,
+  CORE_COLOURS,
   DECANT,
   DISH_STYLE,
   FAULTS,
@@ -351,7 +352,8 @@ export function displayValue(entry: WineEntry, field: AsiFieldDef): DisplayTerm[
       return [{ pt: 'Sim', en: 'Yes' }];
     case 'temperature': {
       const { min, max } = value as { min: number; max: number };
-      return [{ pt: min === max ? `${min} °C` : `${min} a ${max} °C` }];
+      const n = (value: number) => String(value).replace('.', ',');
+      return [{ pt: min === max ? `${n(min)} °C` : `${n(min)} a ${n(max)} °C` }];
     }
     case 'stars':
       return [{ pt: `${value} de 5` }];
@@ -360,4 +362,24 @@ export function displayValue(entry: WineEntry, field: AsiFieldDef): DisplayTerm[
     default:
       return [{ pt: String(value) }];
   }
+}
+
+/**
+ * Troca a cor principal. A cor ASI escolhida só fica se existir na escala do novo
+ * estilo; "Marrom" existe no branco e no tinto com tons diferentes, então o hex que
+ * veio da cor é recalculado. Um hex de outra origem (leitura de rótulo) fica.
+ */
+export function withStyle(entry: WineEntry, estilo: WineStyle | null): WineEntry {
+  const code = entry.visual.coreColour;
+  const previous = findCoreColour(entry.estilo, code);
+  const next = estilo ? CORE_COLOURS[estilo].find((c) => c.code === code) : previous;
+  const derivedHex = Boolean(previous && entry.visual.corHex === previous.hex);
+
+  let visual = entry.visual;
+  if (code && !next) {
+    visual = { ...visual, coreColour: null, corHex: derivedHex ? undefined : visual.corHex };
+  } else if (next && derivedHex) {
+    visual = { ...visual, corHex: next.hex };
+  }
+  return { ...entry, estilo, skinContact: estilo === 'branco' ? entry.skinContact : false, visual };
 }
