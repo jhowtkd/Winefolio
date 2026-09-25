@@ -125,6 +125,9 @@ const DEMO_SPECS: DemoSpec[] = [
   },
 ];
 
+/** Os campos do nível Iniciante, para a ficha de exemplo mostrar a grade ASI. */
+const DEMO_COLOUR = { tinto: 'ruby', branco: 'lemon', rose: 'salmon' } as const;
+
 export function getDemoWines(now: Date = new Date()): WineEntry[] {
   return DEMO_SPECS.map((spec) => {
     const entry = createEntry(spec.id, now);
@@ -140,12 +143,11 @@ export function getDemoWines(now: Date = new Date()): WineEntry[] {
     entry.favorite = spec.favorite;
     entry.aromaTags = [...spec.aromaTags];
     entry.dataDegustacao = spec.dataDegustacao;
+    entry.visual = { ...entry.visual, coreColour: DEMO_COLOUR[spec.estilo] };
+    entry.paladar = { ...entry.paladar, sweetness: 'dry' };
     entry.conclusao = {
-      guarda: '',
-      preco: '',
-      qualidade: '',
+      ...entry.conclusao,
       avaliacaoEstrelas: spec.nota,
-      harmonizacao: '',
       impressaoFinal: spec.impressaoFinal,
     };
     entry.kind = 'demo';

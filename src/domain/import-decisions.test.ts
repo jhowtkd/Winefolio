@@ -33,10 +33,28 @@ describe('defaultImportDecisions', () => {
 
 describe('normalizeImportedEntry', () => {
   it('completa campos que o app pode deixar vazios', () => {
-    const raw = JSON.parse(JSON.stringify({ ...createEntry('x'), origin: undefined, temperaturaServico: null }));
+    const blank = createEntry('x');
+    const raw = JSON.parse(
+      JSON.stringify({ ...blank, origin: undefined, servico: undefined, visual: { ...blank.visual, corHex: null } })
+    );
     const entry = normalizeImportedEntry(raw);
     assert.deepStrictEqual(entry?.origin, { countryCode: null, region: '' });
-    assert.strictEqual(entry?.temperaturaServico, undefined);
+    assert.deepStrictEqual(entry?.servico, blank.servico);
+    assert.strictEqual(entry?.visual.corHex, undefined);
+  });
+
+  it('converte para a grade ASI a ficha de um backup antigo', () => {
+    const entry = normalizeImportedEntry({
+      id: 'antiga',
+      schemaVersion: 2,
+      estilo: 'tinto',
+      paladar: { corpo: 'Encorpado', acidez: 'Média+' },
+      temperaturaServico: '16°C - 18°C',
+    });
+    assert.strictEqual(entry?.schemaVersion, 3);
+    assert.strictEqual(entry?.paladar.body, 'full');
+    assert.deepStrictEqual(entry?.servico.temperature, { min: 16, max: 18 });
+    assert.deepStrictEqual(entry?.legacyNotes, { 'paladar.acidity': 'Média+' });
   });
 
   it('recusa o que não é ficha', () => {

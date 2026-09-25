@@ -9,7 +9,7 @@ import type {
 import { adaptLegacy } from './adapters/legacy';
 import { adaptPrototype } from './adapters/prototype';
 import { backupPhotoIds, bytesToBase64, DRAFT_PHOTO_ID } from '../domain/backup-photos';
-import { normalizeImportedEntry, type ImportDecisions } from '../domain/import-decisions';
+import { normalizeImportedDraft, normalizeImportedEntry, type ImportDecisions } from '../domain/import-decisions';
 
 export type { ImportDecisions };
 
@@ -81,10 +81,12 @@ export async function prepareImport(
       photos = res.photos;
       draft = res.draft;
       warnings.push(...res.warnings);
-    } else if (parsed.format === 'winefolio' && parsed.version === 2) {
+    } else if (parsed.format === 'winefolio' && (parsed.version === 2 || parsed.version === 3)) {
+      // A versão 3 é a da grade ASI. As fichas da versão 2 são convertidas na validação.
       sourceFormat = 'native-v2';
       entries = Array.isArray(parsed.entries) ? parsed.entries : [];
-      draft = parsed.draft || null;
+      draft = normalizeImportedDraft(parsed.draft);
+      if (parsed.draft && !draft) warnings.push('Rascunho ignorado: formato inválido.');
       preferences = parsed.preferences || null;
       if (Array.isArray(parsed.photos)) {
         for (const p of parsed.photos) {
@@ -249,7 +251,7 @@ export async function exportBackup(db: IDBPDatabase<WineDb>): Promise<Blob> {
 
   const backupObject = {
     format: 'winefolio',
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     entries,
     draft: draft || null,

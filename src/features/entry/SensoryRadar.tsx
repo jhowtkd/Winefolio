@@ -7,28 +7,28 @@ import {
   RadarChart,
   ResponsiveContainer,
 } from 'recharts';
-import type { PaladarAnalysis, WineStyle } from '../../domain/wine-entry';
-import { scorePalate, type PalateAxis } from '../../domain/sensory-scale';
+import type { WineEntry, WineStyle } from '../../domain/wine-entry';
+import { palateScore, type PalateAxis } from '../../domain/sensory-scale';
 
 interface SensoryRadarProps {
-  paladar: PaladarAnalysis;
+  entry: Pick<WineEntry, 'paladar' | 'legacyNotes'>;
   estilo: WineStyle | null;
   corHex?: string;
 }
 
-const AXES: Array<{ axis: PalateAxis; label: string; pick: (p: PaladarAnalysis) => string }> = [
-  { axis: 'corpo', label: 'Corpo', pick: (p) => p.corpo },
-  { axis: 'acidez', label: 'Acidez', pick: (p) => p.acidez },
-  { axis: 'tanino', label: 'Tanino', pick: (p) => p.tanino },
-  { axis: 'alcool', label: 'Álcool', pick: (p) => p.alcool },
-  { axis: 'docura', label: 'Doçura', pick: (p) => p.docura },
+const AXES: Array<{ axis: PalateAxis; label: string }> = [
+  { axis: 'corpo', label: 'Corpo' },
+  { axis: 'acidez', label: 'Acidez' },
+  { axis: 'tanino', label: 'Tanino' },
+  { axis: 'alcool', label: 'Álcool' },
+  { axis: 'docura', label: 'Doçura' },
 ];
 
-export const SensoryRadar: React.FC<SensoryRadarProps> = ({ paladar, estilo, corHex }) => {
-  const scores = AXES.map(({ axis, label, pick }) => ({
+export const SensoryRadar: React.FC<SensoryRadarProps> = ({ entry, estilo, corHex }) => {
+  const scores = AXES.map(({ axis, label }) => ({
     axis,
     label,
-    score: scorePalate(pick(paladar), axis),
+    score: palateScore(entry, axis),
   }));
 
   if (scores.every((item) => item.score === null)) return null;

@@ -108,6 +108,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
 
+      // Fichas anteriores à grade ASI. Se falhar, o app segue e tenta na próxima abertura.
+      try {
+        const { migrateToAsi } = await import('../repositories/migration');
+        await migrateToAsi(database);
+      } catch (mErr) {
+        console.error('Aviso ao converter as fichas para a grade ASI:', mErr);
+      }
+
       const repo = createWineRepository(database);
       setRepository(repo);
 

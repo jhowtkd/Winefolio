@@ -28,6 +28,10 @@ describe('Adapters Test', () => {
     assert.strictEqual(entry.conclusao.avaliacaoEstrelas, 5);
     assert.strictEqual(entry.kind, 'legacy');
     assert.strictEqual(entry.sourceFormat, 'app-v1');
+    assert.strictEqual(entry.schemaVersion, 3);
+    assert.strictEqual(entry.estilo, 'tinto');
+    assert.strictEqual(entry.visual.corHex, '#83122D');
+    assert.deepStrictEqual(entry.legacyNotes, { 'visual.coreColour': 'Rubi Intenso' });
   });
 
   it('adapta backup do protótipo v1 mapeando campos e estilo espumante', () => {
