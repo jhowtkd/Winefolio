@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { createEntry } from './wine-factory.js';
-import { applyLabelAnalysis } from './label-fill.js';
+import { applyLabelAnalysis, settleAiProvenance, aiSuggestedFields } from './label-fill.js';
 
 describe('applyLabelAnalysis', () => {
   it('preenche campos vazios e não apaga o que a pessoa já escreveu', () => {
@@ -34,11 +34,38 @@ describe('applyLabelAnalysis', () => {
     assert.strictEqual(next.decantacao, '45 min');
     assert.strictEqual(next.conclusao.guarda, 'Beber ou guardar 3-5 anos');
     assert.strictEqual(next.conclusao.harmonizacao, 'Cordeiro');
-    assert.strictEqual(next.conclusao.qualidade, 'Excelente');
-    assert.strictEqual(next.conclusao.impressaoFinal, 'Tinto de guarda.');
+    assert.strictEqual(next.conclusao.qualidade, '');
+    assert.strictEqual(next.conclusao.impressaoFinal, '');
     assert.strictEqual(next.olfato.aromas, 'Cassis, Cedro');
     assert.deepStrictEqual(next.aromaTags, ['Cassis', 'Cedro']);
     assert.strictEqual(next.visual.corHex, '#581825');
     assert.strictEqual(next.origin.countryCode, 'CL');
+  });
+});
+
+describe('proveniência da leitura de rótulo', () => {
+  it('marca como ai-unverified só o que a IA preencheu', () => {
+    const entry = createEntry('x');
+    entry.produtor = 'Meu produtor';
+    const next = applyLabelAnalysis(entry, { produtor: 'Outro', vinho: 'Reserva', safra: '2020' });
+    assert.strictEqual(next.produtor, 'Meu produtor');
+    assert.strictEqual(next.provenance.produtor, undefined);
+    assert.strictEqual(next.provenance.vinho, 'ai-unverified');
+    assert.strictEqual(next.provenance.safra, 'ai-unverified');
+  });
+
+  it('não escreve a impressão final nem a qualidade', () => {
+    const next = applyLabelAnalysis(createEntry('x'), { resumo: 'Texto do modelo', qualidadeEstimada: 'Excelente' });
+    assert.strictEqual(next.conclusao.impressaoFinal, '');
+    assert.strictEqual(next.conclusao.qualidade, '');
+  });
+
+  it('campo editado depois da leitura passa a ser da pessoa', () => {
+    const filled = applyLabelAnalysis(createEntry('x'), { vinho: 'Reserva', safra: '2020' });
+    const edited = { ...filled, vinho: 'Reserva Especial' };
+    const settled = settleAiProvenance(edited, filled);
+    assert.strictEqual(settled.provenance.vinho, 'user');
+    assert.strictEqual(settled.provenance.safra, 'ai-unverified');
+    assert.deepStrictEqual(aiSuggestedFields(settled), ['safra']);
   });
 });

@@ -9,6 +9,8 @@ description: How to run and E2E-test the Winefolio app locally (dev server, hash
 - node/npm are NOT on PATH. `export PATH="$HOME/.nvm/versions/node/v24.19.0/bin:$PATH"` first.
 - `npm run dev` starts `tsx server.ts` (Express + Vite middleware) on **port 3000**. Health check: `curl localhost:3000/api/health`.
 - `npm test` = `tsx --test 'src/**/*.test.ts'` (node:test domain suites). `npm run lint` = `tsc --noEmit`.
+- `npm run test:e2e` = Playwright (`e2e/*.spec.ts`), desktop Chrome + Pixel 7. It builds and starts the production server itself. In the Claude cloud container Chromium is preinstalled at `/opt/pw-browsers`; keep `@playwright/test` at the version that matches it and do not run `playwright install`.
+- The label reading is mocked with `page.route('**/api/analyze-wine-label', ...)`; E2E never needs `GEMINI_API_KEY`.
 
 ## App facts
 - All data is local in **IndexedDB `winefolio-local`** (stores: `records`, `photos`, `drafts`, `settings`). No auth, no backend data.
@@ -28,6 +30,7 @@ description: How to run and E2E-test the Winefolio app locally (dev server, hash
 - `GEMINI_API_KEY` — only if testing AI label OCR.
 
 ## Gotchas
+- Buttons behind an open dialog still match `getByRole`; use `exact: true` for short names like `Exportar` or `Carregar`.
 - `commitEntry` throws RevisionConflictError when re-loading demos over existing IDs — clicking "Carregar exemplos" a second time shows a failure toast; that is expected.
 - A pre-existing React dev warning fires in the editor: `value` prop null on Tipo/Estilo selects (fields default to null in `createEntry`). Present before this PR — not a regression signal.
 - Deleting a module imported by an HMR-loaded page can leave a stale Vite transform (`ReferenceError: X is not defined` even though source is fixed). Fix: restart the dev server (`rm -rf node_modules/.vite` if needed).

@@ -6,6 +6,8 @@ import type {
   CommitEntryInput,
   PhotoChange,
 } from '../domain/wine-entry';
+import type { BackupStatus } from '../domain/backup-reminder';
+import type { ImportPreview, ImportDecisions } from '../repositories/transfer';
 import type { AppRoute } from './navigation';
 
 export interface WinefolioContextValue {
@@ -21,14 +23,29 @@ export interface WinefolioContextValue {
   discardDraft: () => Promise<void>;
   updatePreferences: (prefs: Partial<Preferences>) => Promise<void>;
   exportBackup: () => Promise<void>;
-  importBackup: (file: File) => Promise<{ imported: number; skipped: number }>;
+  previewImport: (file: File) => Promise<{ preview: ImportPreview; defaults: ImportDecisions }>;
+  confirmImport: (
+    preview: ImportPreview,
+    decisions: ImportDecisions
+  ) => Promise<{ imported: number; skipped: number }>;
   loadDemoWines: () => Promise<void>;
   readPhotoBlob: (id: string) => Promise<Blob | undefined>;
-  showToast: (message: string, type?: 'info' | 'success' | 'warn' | 'error') => void;
+  showToast: (
+    message: string,
+    type?: 'info' | 'success' | 'warn' | 'error',
+    options?: {
+      action?: { label: string; run: () => void };
+      durationMs?: number;
+    }
+  ) => void;
   activeEntry: WineEntry | null;
   loading: boolean;
   error: string | null;
   retryInit: () => void;
+  backupStatus: BackupStatus;
+  backupDue: boolean;
+  storagePersisted: boolean | null;
+  snoozeBackupReminder: () => Promise<void>;
 }
 
 export const WinefolioContext = createContext<WinefolioContextValue | null>(null);

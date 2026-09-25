@@ -36,6 +36,9 @@ interface JournalPageProps {
   onDiscardDraft: () => Promise<void>;
   onNavigate: (route: AppRoute) => void;
   onOpenPassport: () => void;
+  backupDue: boolean;
+  onExportBackup: () => Promise<void>;
+  onSnoozeBackup: () => Promise<void>;
 }
 
 export const JournalPage: React.FC<JournalPageProps> = ({
@@ -53,6 +56,9 @@ export const JournalPage: React.FC<JournalPageProps> = ({
   onDiscardDraft,
   onNavigate,
   onOpenPassport,
+  backupDue,
+  onExportBackup,
+  onSnoozeBackup,
 }) => {
   const filter: JournalFilter =
     route.tab === 'favorites'
@@ -248,6 +254,24 @@ export const JournalPage: React.FC<JournalPageProps> = ({
                 </button>
                 <button type="button" aria-label="Descartar rascunho" onClick={onDiscardDraft}>
                   Descartar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {backupDue && (
+            <div className="draft-banner" role="status">
+              <p>
+                <strong>Suas fichas só existem neste navegador.</strong>
+                <br />
+                Guarde uma cópia para não perder nada se o navegador limpar os dados.
+              </p>
+              <div className="actions">
+                <button type="button" onClick={() => void onExportBackup().catch(() => undefined)}>
+                  Exportar agora
+                </button>
+                <button type="button" onClick={() => void onSnoozeBackup()}>
+                  Lembrar em 7 dias
                 </button>
               </div>
             </div>

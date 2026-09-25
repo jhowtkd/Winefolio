@@ -2,13 +2,22 @@ import React, { useRef, useState } from 'react';
 import { ModalDialog } from '../../components/proto/ModalDialog';
 import { Icon } from '../../components/proto/Sprite';
 import type { Preferences } from '../../domain/wine-entry';
+import type { BackupStatus } from '../../domain/backup-reminder';
+import type { ImportPreview, ImportDecisions } from '../../repositories/transfer';
+import { ImportPreviewDialog } from './ImportPreviewDialog';
 
 interface SettingsPageProps {
   preferences: Preferences;
   onUpdatePreferences: (prefs: Partial<Preferences>) => Promise<void>;
   onExportBackup: () => Promise<void>;
-  onImportBackup: (file: File) => Promise<{ imported: number; skipped: number }>;
+  onPreviewImport: (file: File) => Promise<{ preview: ImportPreview; defaults: ImportDecisions }>;
+  onConfirmImport: (
+    preview: ImportPreview,
+    decisions: ImportDecisions
+  ) => Promise<{ imported: number; skipped: number }>;
   onLoadDemoWines: () => Promise<void>;
+  backupStatus: BackupStatus;
+  storagePersisted: boolean | null;
   onNavigate: (hash: string) => void;
   showToast: (msg: string, type?: 'info' | 'success' | 'warn' | 'error') => void;
 }
@@ -18,14 +27,21 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   preferences,
   onUpdatePreferences,
   onExportBackup,
-  onImportBackup,
+  onPreviewImport,
+  onConfirmImport,
   onLoadDemoWines,
+  backupStatus,
+  storagePersisted,
   onNavigate,
   showToast,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [pendingImport, setPendingImport] = useState<{
+    preview: ImportPreview;
+    defaults: ImportDecisions;
+  } | null>(null);
   const [isLoadingDemo, setIsLoadingDemo] = useState(false);
 
   const handleExport = async () => {
@@ -44,14 +60,26 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     if (!file) return;
     try {
       setIsImporting(true);
-      const res = await onImportBackup(file);
-      showToast(`Importação realizada! ${res.imported} fichas processadas com sucesso.`, 'success');
-      onNavigate('#/caderno');
+      setPendingImport(await onPreviewImport(file));
     } catch (err: any) {
-      showToast('Falha ao importar arquivo: ' + err.message, 'error');
+      showToast('Falha ao ler o arquivo: ' + err.message, 'error');
     } finally {
       setIsImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleConfirmImport = async (decisions: ImportDecisions) => {
+    if (!pendingImport) return;
+    try {
+      setIsImporting(true);
+      await onConfirmImport(pendingImport.preview, decisions);
+      setPendingImport(null);
+      onNavigate('#/caderno');
+    } catch (err: any) {
+      showToast('Falha ao importar: ' + err.message, 'error');
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -82,6 +110,27 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       </div>
 
       <div className="settings-list">
+        <div className="setting-row">
+          <div>
+            <h3>Explorar o caderno</h3>
+            <p>A adega agrupa as fichas por rótulo e safra. As estatísticas resumem o que você bebeu.</p>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" className="btn btn-secondary" onClick={() => onNavigate('#/adega')}>
+              <Icon name="cellar" />
+              Adega
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => onNavigate('#/estatisticas')}
+            >
+              <Icon name="chart" />
+              Estatísticas
+            </button>
+          </div>
+        </div>
+
         <div className="setting-row">
           <div>
             <h3>Mostrar coleção de exemplo</h3>
@@ -138,6 +187,26 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
         <div className="setting-row">
           <div>
+            <h3>Leitura de rótulo com IA</h3>
+            <p>
+              {preferences.aiConsentAt
+                ? `Permitida desde ${new Date(preferences.aiConsentAt).toLocaleDateString('pt-BR')}. A foto vai ao Google Gemini só quando você pede a leitura.`
+                : 'Pede licença no primeiro uso. Sem licença, a foto fica só neste navegador.'}
+            </p>
+          </div>
+          {preferences.aiConsentAt ? (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => onUpdatePreferences({ aiConsentAt: null })}
+            >
+              Revogar
+            </button>
+          ) : null}
+        </div>
+
+        <div className="setting-row">
+          <div>
             <h3>Traga as fichas de exemplo</h3>
             <p>Carrega a coleção ilustrativa de seis vinhos no seu caderno.</p>
           </div>
@@ -156,6 +225,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           <div>
             <h3>Uma cópia das suas anotações</h3>
             <p>Exportação JSON das suas fichas para guardar ou levar a outro navegador.</p>
+            <p>
+              {backupStatus.lastBackupAt
+                ? `Último backup: ${new Date(backupStatus.lastBackupAt).toLocaleDateString('pt-BR')}.`
+                : 'Nenhum backup ainda.'}
+            </p>
           </div>
           <button
             type="button"
@@ -166,6 +240,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <Icon name="download" />
             {isExporting ? 'Exportando...' : 'Exportar'}
           </button>
+        </div>
+
+        <div className="setting-row">
+          <div>
+            <h3>Proteção contra limpeza do navegador</h3>
+            <p>
+              {storagePersisted === true
+                ? 'Ativa. O navegador não apaga o caderno para liberar espaço.'
+                : storagePersisted === false
+                  ? 'Negada pelo navegador. Instale o app na tela inicial ou faça backups.'
+                  : 'Não suportada neste navegador. Faça backups.'}
+            </p>
+          </div>
         </div>
 
         <div className="setting-row">
@@ -193,10 +280,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       </div>
 
       <div className="settings-note">
-        <strong>Privacidade:</strong> suas notas e fotos ficam apenas neste navegador
-        (IndexedDB <code>winefolio-local</code>). Nada é enviado para servidores sem o seu
-        consentimento.
+        <strong>Privacidade:</strong> suas notas e fotos ficam só neste navegador (IndexedDB{' '}
+        <code>winefolio-local</code>). A foto do rótulo só sai daqui quando você usa a leitura com
+        IA, e vai para o Google Gemini.
       </div>
+
+      {pendingImport && (
+        <ImportPreviewDialog
+          preview={pendingImport.preview}
+          defaults={pendingImport.defaults}
+          busy={isImporting}
+          onCancel={() => setPendingImport(null)}
+          onConfirm={handleConfirmImport}
+        />
+      )}
     </ModalDialog>
   );
 };

@@ -1,5 +1,5 @@
 {
-  "name": "Ficha de Degustação de Vinhos",
+  "name": "Winefolio",
   "description": "Aplicativo para registrar, organizar e consultar anotações e fichas técnicas de degustação de vinhos.",
   "requestFramePermissions": ["microphone", "camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

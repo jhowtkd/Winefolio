@@ -3,14 +3,29 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
+import { createRateLimiter } from './src/server/rate-limit';
+import { parseLabelRequest } from './src/server/label-request';
+import { LabelAnalysisSchema } from './src/domain/label-schema';
 
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 
-// Support large image payloads (e.g. photos taken from high-res smartphone cameras)
-app.use(express.json({ limit: '25mb' }));
+// Cada instância do Cloud Run conta sozinha e zera ao escalar para zero.
+// O teto diário e o máximo de instâncias fecham a conta.
+const perIp = createRateLimiter({ windowMs: 10 * 60_000, max: 10 });
+const perDay = createRateLimiter({
+  windowMs: 24 * 60 * 60_000,
+  max: Number(process.env.GEMINI_DAILY_CAP) || 500,
+});
+
+// O Cloud Run passa o IP do cliente em X-Forwarded-For.
+app.set('trust proxy', true);
+
+// A foto chega em base64 e já vem reduzida pelo cliente (900x1200).
+app.use(express.json({ limit: '8mb' }));
 
 // Lazy-initialized Gemini AI client
 let aiClient: GoogleGenAI | null = null;
@@ -39,32 +54,38 @@ app.get('/api/health', (req, res) => {
 
 // Endpoint: Analyze Wine Label Photo with Gemini Multimodal Vision
 app.post('/api/analyze-wine-label', async (req, res) => {
+  const request = parseLabelRequest(req.body);
+  // O tsconfig não usa strict, então `ok` não discrimina a união.
+  if ('status' in request) {
+    res.status(request.status).json({ success: false, error: request.error });
+    return;
+  }
+
+  const ipHit = perIp.hit(req.ip || 'unknown');
+  if (!ipHit.allowed) {
+    res.set('Retry-After', String(ipHit.retryAfterSeconds));
+    res.status(429).json({
+      success: false,
+      error: 'Muitas leituras seguidas. Tente de novo em alguns minutos.',
+    });
+    return;
+  }
+
+  if (!perDay.hit('global').allowed) {
+    res.status(503).json({
+      success: false,
+      error: 'A leitura de rótulos chegou ao limite de hoje. Preencha à mão ou tente amanhã.',
+    });
+    return;
+  }
+
   try {
-    const { imageBase64, mimeType } = req.body;
-
-    if (!imageBase64 || typeof imageBase64 !== 'string') {
-      res.status(400).json({
-        error: 'Nenhuma imagem foi enviada ou o formato é inválido.',
-      });
-      return;
-    }
-
-    // Clean data URL prefix if present
-    let rawBase64 = imageBase64;
-    let resolvedMime = mimeType || 'image/jpeg';
-
-    if (imageBase64.includes(';base64,')) {
-      const parts = imageBase64.split(';base64,');
-      resolvedMime = parts[0].replace(/^data:/, '') || resolvedMime;
-      rawBase64 = parts[1];
-    }
-
     const ai = getGenAI();
 
     const imagePart = {
       inlineData: {
-        mimeType: resolvedMime,
-        data: rawBase64,
+        mimeType: request.mimeType,
+        data: request.data,
       },
     };
 
@@ -75,9 +96,10 @@ Retorne o JSON preenchido rigorosamente com os campos solicitados em português.
     };
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+      model: GEMINI_MODEL,
       contents: { parts: [imagePart, textPart] },
       config: {
+        abortSignal: AbortSignal.timeout(30_000),
         systemInstruction: `Você é um Master Sommelier e especialista mundial em vinhos e catalogação de rótulos.
 Sua missão é extrair e estruturar os dados de garrafas de vinho a partir de fotografias de seus rótulos frontais ou contra-rótulos.
 Priorize:
@@ -133,18 +155,33 @@ Priorize:
       throw new Error('A IA não retornou texto ou a análise foi interrompida.');
     }
 
-    const parsedData = JSON.parse(textOutput);
+    const parsed = LabelAnalysisSchema.safeParse(JSON.parse(textOutput));
+    if (!parsed.success) {
+      throw new Error('Resposta do Gemini fora do formato esperado.');
+    }
     res.json({
       success: true,
-      data: parsedData,
+      data: parsed.data,
     });
   } catch (err: any) {
     console.error('Erro na análise de rótulo via Gemini:', err);
-    res.status(500).json({
+    const timedOut = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
+    res.status(timedOut ? 504 : 502).json({
       success: false,
-      error: err.message || 'Falha ao processar a leitura do rótulo com inteligência artificial.',
+      error: timedOut
+        ? 'A leitura demorou demais. Tente de novo.'
+        : 'Não foi possível ler o rótulo agora. Preencha à mão ou tente de novo.',
     });
   }
+});
+
+// Corpo acima do limite vira JSON, não a página HTML padrão do Express.
+app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err?.type === 'entity.too.large') {
+    res.status(413).json({ success: false, error: 'A foto é grande demais. Tente outra.' });
+    return;
+  }
+  next(err);
 });
 
 // Vite middleware for development & Static file serving for production

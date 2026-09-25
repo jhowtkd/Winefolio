@@ -8,9 +8,12 @@ interface HeaderProps {
 }
 
 const NAV_ITEMS = [
-  { hash: '#/caderno', label: 'Caderno', icon: 'book', match: 'journal' },
-  { hash: '#/passaporte', label: 'Passaporte', icon: 'passport', match: 'passport' },
-  { hash: '#/paladar', label: 'Meu paladar', icon: 'palate', match: 'palate' },
+  { hash: '#/caderno', label: 'Caderno', icon: 'book', match: 'journal', extra: false },
+  { hash: '#/passaporte', label: 'Passaporte', icon: 'passport', match: 'passport', extra: false },
+  { hash: '#/paladar', label: 'Meu paladar', icon: 'palate', match: 'palate', extra: false },
+  // Entre 680 e 1023 px os extras não cabem no cabeçalho e ficam em Opções.
+  { hash: '#/adega', label: 'Adega', icon: 'cellar', match: 'cellar', extra: true },
+  { hash: '#/estatisticas', label: 'Estatísticas', icon: 'chart', match: 'stats', extra: true },
 ] as const;
 
 /** Cabeçalho e navegação inferior móvel no padrão do protótipo 1.1. */
@@ -40,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({ activeRoute, onNavigate }) => (
               <button
                 key={item.hash}
                 type="button"
-                className={`nav-btn ${active ? 'active' : ''}`}
+                className={`nav-btn ${item.extra ? 'nav-extra' : ''} ${active ? 'active' : ''}`}
                 aria-current={active ? 'page' : undefined}
                 onClick={() => onNavigate(item.hash)}
               >

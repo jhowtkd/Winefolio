@@ -8,7 +8,7 @@ import type {
 } from '../../domain/wine-entry';
 import { createEntry } from '../../domain/wine-factory';
 import { COUNTRIES, inferCountryCode } from '../../domain/countries';
-import { applyLabelAnalysis } from '../../domain/label-fill';
+import { applyLabelAnalysis, settleAiProvenance } from '../../domain/label-fill';
 import { appendDictation } from '../../domain/dictation';
 import { useSpeechDictation } from './useSpeechDictation';
 import { PaperSurface } from '../../components/ui/PaperSurface';
@@ -66,6 +66,8 @@ interface EntryEditorPageProps {
   onDiscardDraft: () => Promise<void>;
   onNavigate: (hash: string) => void;
   showToast: (msg: string, type?: 'info' | 'success' | 'warn' | 'error') => void;
+  aiConsented: boolean;
+  onGrantAiConsent: () => Promise<void>;
 }
 
 type TabKey = 'geral' | 'visual' | 'olfato' | 'paladar' | 'conclusao';
@@ -80,6 +82,8 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
   onDiscardDraft,
   onNavigate,
   showToast,
+  aiConsented,
+  onGrantAiConsent,
 }) => {
   const isEditingExisting = Boolean(initialEntry);
 
@@ -102,6 +106,11 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
 
     return newOne;
   });
+
+  // Estado da ficha na última vez que a IA a preencheu (ou ao abrir).
+  // Campo sugerido pela IA que a pessoa mudou depois disso passa a ser dela.
+  const aiSnapshot = useRef<WineEntry>(formData);
+  const [pendingAiPhoto, setPendingAiPhoto] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<TabKey>('geral');
   const [isSaving, setIsSaving] = useState(false);
@@ -140,6 +149,7 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
   const applyDraft = () => {
     if (existingDraft) {
       setFormData(existingDraft.entry);
+      aiSnapshot.current = existingDraft.entry;
       setShowDraftBanner(false);
       showToast('Rascunho recuperado com sucesso!', 'info');
     }
@@ -196,18 +206,42 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
     setFormData((prev) => ({ ...prev, photoId: null }));
   };
 
-  // Análise IA de Rótulo
-  const handleAnalyzeLabel = async (photoDataUrl: string) => {
+  // Análise IA de Rótulo. Sem consentimento, a foto espera a resposta da pessoa.
+  const handleAnalyzeLabel = (photoDataUrl: string) => {
+    if (!aiConsented) {
+      setPendingAiPhoto(photoDataUrl);
+      return;
+    }
+    void runLabelAnalysis(photoDataUrl);
+  };
+
+  const acceptAiConsent = async () => {
+    const photo = pendingAiPhoto;
+    setPendingAiPhoto(null);
+    try {
+      await onGrantAiConsent();
+    } catch {
+      showToast('Não foi possível guardar a sua escolha.', 'error');
+      return;
+    }
+    if (photo) void runLabelAnalysis(photo);
+  };
+
+  const runLabelAnalysis = async (photoDataUrl: string) => {
     setIsAnalyzing(true);
     showToast('Analisando rótulo com sommelier digital...', 'info');
     try {
       const result = await analyzeWineLabelPhoto(photoDataUrl);
       if (result) {
-        setFormData((prev) => applyLabelAnalysis(prev, result));
-        showToast('Campos do rótulo identificados e preenchidos!', 'success');
+        setFormData((prev) => {
+          const next = applyLabelAnalysis(prev, result);
+          aiSnapshot.current = next;
+          return next;
+        });
+        showToast('Campos sugeridos pela IA. Revise antes de salvar.', 'success');
       }
     } catch (err: any) {
-      showToast('Não foi possível analisar o rótulo: ' + err.message, 'warn');
+      showToast(err?.message || 'Não foi possível ler as informações do rótulo.', 'warn');
     } finally {
       setIsAnalyzing(false);
     }
@@ -225,7 +259,7 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
     try {
       setIsSaving(true);
       const saved = await onCommit(
-        formData,
+        settleAiProvenance(formData, aiSnapshot.current),
         photoChange,
         isEditingExisting ? initialEntry!.revision : null,
         !isEditingExisting // Limpa rascunho se era nova ficha
@@ -1278,6 +1312,34 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
           </div>
         </form>
       </PaperSurface>
+
+      {pendingAiPhoto && (
+        <ModalDialog
+          label="Winefolio / leitura de rótulo"
+          closeLabel="Fechar sem enviar"
+          onClose={() => setPendingAiPhoto(null)}
+          ariaLabelledBy="ai-consent-title"
+          footer={
+            <div className="actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setPendingAiPhoto(null)}>
+                Só guardar a foto
+              </button>
+              <button type="button" className="btn btn-primary" onClick={acceptAiConsent}>
+                Enviar e ler
+              </button>
+            </div>
+          }
+        >
+          <h2 id="ai-consent-title" className="font-serif text-2xl mb-3">
+            Ler o rótulo com IA?
+          </h2>
+          <p className="text-sm leading-relaxed">
+            Para ler o rótulo, a foto é enviada ao Google Gemini. O Winefolio não guarda a foto no
+            servidor. Os campos preenchidos ficam marcados como sugestão até você revisar.
+          </p>
+          <p className="text-xs mt-3 text-[#6b6458]">Você pode revogar isso em Opções.</p>
+        </ModalDialog>
+      )}
     </ModalDialog>
   );
 };
