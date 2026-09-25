@@ -22,6 +22,8 @@ export function styleLabel(entry: Pick<WineEntry, 'tipo' | 'estilo'>): string {
   if (entry.tipo === 'espumante') return 'Espumante';
   if (entry.tipo === 'sobremesa') return 'Sobremesa';
   if (entry.tipo === 'fortificado') return 'Fortificado';
+  if (entry.tipo === 'mistela') return 'Mistela';
+  if (entry.tipo === 'aromatizado') return 'Aromatizado';
   if (entry.estilo === 'tinto') return 'Tinto';
   if (entry.estilo === 'branco') return 'Branco';
   if (entry.estilo === 'rose') return 'Rosé';

@@ -18,10 +18,15 @@ const STYLE_LABELS: Array<[string, string]> = [
   ['branco', 'Brancos'],
   ['rose', 'Rosés'],
   ['espumante', 'Espumantes'],
+  ['mistela', 'Mistelas'],
+  ['aromatizado', 'Aromatizados'],
 ];
 
+/** Barras que aparecem mesmo zeradas. Os tipos raros só aparecem quando existem. */
+const ALWAYS_SHOWN = new Set(['tinto', 'branco', 'rose', 'espumante']);
+
 function styleOf(e: WineEntry): string | null {
-  if (e.tipo === 'espumante') return 'espumante';
+  if (e.tipo === 'espumante' || e.tipo === 'mistela' || e.tipo === 'aromatizado') return e.tipo;
   return e.estilo;
 }
 
@@ -57,7 +62,7 @@ export const PalatePage: React.FC<PalatePageProps> = ({
     k,
     label,
     records.filter((e) => styleOf(e) === k).length,
-  ]) as Array<[string, string, number]>;
+  ]).filter(([k, , n]) => ALWAYS_SHOWN.has(k as string) || (n as number) > 0) as Array<[string, string, number]>;
   const someUnstyled = records.some((e) => !styleOf(e));
 
   return (

@@ -79,6 +79,13 @@ describe('proveniência da leitura de rótulo', () => {
     assert.strictEqual(next.provenance['servico.temperature'], 'ai-unverified');
   });
 
+  it('a leitura que diz "branco" não desfaz o laranja marcado pela pessoa', () => {
+    const orange = { ...createEntry('x'), estilo: 'branco' as const, skinContact: true };
+    assert.strictEqual(applyLabelAnalysis(orange, { estilo: 'branco' }).skinContact, true);
+    assert.strictEqual(applyLabelAnalysis(orange, { estilo: 'tinto' }).skinContact, false);
+    assert.strictEqual(applyLabelAnalysis(orange, {}).skinContact, true);
+  });
+
   it('vinho laranja vira branco com contato com as cascas', () => {
     const next = applyLabelAnalysis(createEntry('x'), { estilo: 'laranja', tipo: 'espumante' });
     assert.deepStrictEqual([next.tipo, next.estilo, next.skinContact], ['espumante', 'branco', true]);

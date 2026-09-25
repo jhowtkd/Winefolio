@@ -118,7 +118,9 @@ export function applyLabelAnalysis(entry: WineEntry, analysis: LabelAnalysis): W
     regiaoPais,
     tipo: asWineType(analysis.tipo) ?? entry.tipo,
     estilo: style?.estilo ?? entry.estilo,
-    skinContact: style ? style.skinContact : entry.skinContact,
+    // O Gemini só responde tinto, branco ou rosé. "branco" não desfaz o laranja que a
+    // pessoa marcou; só um estilo que não é branco tira o contato com as cascas.
+    skinContact: style?.skinContact || (style && style.estilo !== 'branco' ? false : entry.skinContact),
     origin: {
       region: regiaoPais,
       countryCode: inferCountryCode(regiaoPais) ?? entry.origin?.countryCode ?? null,

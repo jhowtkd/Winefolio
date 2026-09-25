@@ -6,6 +6,7 @@ import {
   grapeBreakdown,
   ratingDistribution,
   styleBreakdown,
+  styleLabel,
   tastingsByMonth,
 } from './insights.js';
 
@@ -40,5 +41,13 @@ describe('Collection insights', () => {
       months.slice(0, 5).reduce((sum, month) => sum + month.count, 0),
       0
     );
+  });
+});
+
+describe('styleLabel', () => {
+  it('conta mistela e aromatizado pelo tipo, não pela cor', () => {
+    assert.strictEqual(styleLabel({ tipo: 'mistela', estilo: 'branco' }), 'Mistela');
+    assert.strictEqual(styleLabel({ tipo: 'aromatizado', estilo: null }), 'Aromatizado');
+    assert.strictEqual(styleLabel({ tipo: 'tranquilo', estilo: 'branco' }), 'Branco');
   });
 });
