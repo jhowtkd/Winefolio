@@ -370,7 +370,12 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
                       aria-pressed={selected}
                       onClick={() =>
                         setFormData((prev) => {
-                          if (selected) return setPath(prev, 'visual.coreColour', null);
+                          if (selected) {
+                            // O hex veio desta cor; sem ela, a taça e o radar voltam ao padrão.
+                            const cleared = setPath(prev, 'visual.coreColour', null);
+                            const corHex = prev.visual.corHex === colour.hex ? undefined : prev.visual.corHex;
+                            return { ...cleared, visual: { ...cleared.visual, corHex } };
+                          }
                           const next = setPath(prev, 'visual.coreColour', colour.code);
                           return {
                             ...next,

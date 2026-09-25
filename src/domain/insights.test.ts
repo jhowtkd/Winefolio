@@ -49,5 +49,6 @@ describe('styleLabel', () => {
     assert.strictEqual(styleLabel({ tipo: 'mistela', estilo: 'branco' }), 'Mistela');
     assert.strictEqual(styleLabel({ tipo: 'aromatizado', estilo: null }), 'Aromatizado');
     assert.strictEqual(styleLabel({ tipo: 'tranquilo', estilo: 'branco' }), 'Branco');
+    assert.strictEqual(styleLabel({ tipo: 'tranquilo', estilo: 'branco', skinContact: true }), 'Laranja');
   });
 });

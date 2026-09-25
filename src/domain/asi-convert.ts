@@ -262,7 +262,9 @@ export function parseAgeing(text: string): Converted<Ageing> | null {
   if (numbers.length === 0 || !/ano/.test(term)) return null;
   const top = bandFor(Math.max(...numbers));
   const bottom = bandFor(Math.max(Math.min(...numbers), 1));
-  return top === bottom && numbers.length <= 2 ? ok(top) : partial(top);
+  // "10+ anos" não tem teto: a faixa perde o sentido, então o texto fica guardado.
+  const openEnded = /\+|mais de|acima de/.test(term) && top !== '15+';
+  return top === bottom && numbers.length <= 2 && !openEnded ? ok(top) : partial(top);
 }
 
 export function asWineType(text: string | null | undefined): WineType | null {

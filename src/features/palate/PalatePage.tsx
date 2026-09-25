@@ -18,6 +18,7 @@ const STYLE_LABELS: Array<[string, string]> = [
   ['branco', 'Brancos'],
   ['rose', 'Rosés'],
   ['espumante', 'Espumantes'],
+  ['laranja', 'Laranjas'],
   ['mistela', 'Mistelas'],
   ['aromatizado', 'Aromatizados'],
 ];
@@ -27,6 +28,7 @@ const ALWAYS_SHOWN = new Set(['tinto', 'branco', 'rose', 'espumante']);
 
 function styleOf(e: WineEntry): string | null {
   if (e.tipo === 'espumante' || e.tipo === 'mistela' || e.tipo === 'aromatizado') return e.tipo;
+  if (e.estilo === 'branco' && e.skinContact) return 'laranja';
   return e.estilo;
 }
 

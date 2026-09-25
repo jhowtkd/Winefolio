@@ -18,14 +18,14 @@ export interface MonthBucket {
 
 const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
-export function styleLabel(entry: Pick<WineEntry, 'tipo' | 'estilo'>): string {
+export function styleLabel(entry: Pick<WineEntry, 'tipo' | 'estilo'> & { skinContact?: boolean }): string {
   if (entry.tipo === 'espumante') return 'Espumante';
   if (entry.tipo === 'sobremesa') return 'Sobremesa';
   if (entry.tipo === 'fortificado') return 'Fortificado';
   if (entry.tipo === 'mistela') return 'Mistela';
   if (entry.tipo === 'aromatizado') return 'Aromatizado';
   if (entry.estilo === 'tinto') return 'Tinto';
-  if (entry.estilo === 'branco') return 'Branco';
+  if (entry.estilo === 'branco') return entry.skinContact ? 'Laranja' : 'Branco';
   if (entry.estilo === 'rose') return 'Rosé';
   return 'Sem estilo';
 }

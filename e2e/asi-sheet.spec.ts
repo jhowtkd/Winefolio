@@ -156,3 +156,17 @@ test('o ajuste de nível abre a grade completa em toda ficha nova', async ({ pag
   await expect(page.getByRole('tab', { name: /Serviço/ })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Mostrar grade completa' })).toHaveCount(0);
 });
+
+test('desmarcar a cor tira também a cor da taça', async ({ page }) => {
+  await page.goto('/#/novo');
+  await page.getByPlaceholder(NAME).fill('Sem Cor');
+  await openTab(page, /Visual/);
+  const ruby = page.getByRole('button', { name: 'Rubi · Ruby' });
+  await ruby.click();
+  await expect(ruby).toHaveAttribute('aria-pressed', 'true');
+  await ruby.click();
+  await expect(ruby).toHaveAttribute('aria-pressed', 'false');
+  await page.getByRole('button', { name: /Guardar no caderno/ }).click();
+  await expect(page).toHaveURL(/#\/ficha\//);
+  await expect(page.locator('[title^="Cor: #"]')).toHaveCount(0);
+});
