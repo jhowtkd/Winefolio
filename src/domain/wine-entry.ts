@@ -1,3 +1,36 @@
+import type {
+  Ageing,
+  ALCOHOL,
+  ASI_QUALITY,
+  BODY,
+  BRIGHTNESS,
+  CLARITY,
+  CLIMATE,
+  CLIMATE_TYPE,
+  CodeOf,
+  CONDITION,
+  CoreColour,
+  DECANT,
+  DISH_STYLE,
+  Fault,
+  FINISH,
+  GLASS,
+  NOSE_MATURITY,
+  OAK,
+  OBSERVATIONS,
+  PAIRING_COMPONENTS,
+  PALATE_MATURITY,
+  RIM_VARIATION,
+  SPARKLE,
+  Substyle,
+  SWEETNESS,
+  TANNIN_QUALITY,
+  TEXTURE,
+  Vinification,
+  WineStyle,
+  WineType,
+} from './asi-vocabulary';
+
 export type Rating = 1 | 2 | 3 | 4 | 5 | null;
 export type RecordKind = 'personal' | 'legacy' | 'demo';
 export type DataSource = 'user' | 'imported-user' | 'legacy-unknown' | 'ai-unverified' | 'demo';
@@ -9,48 +42,86 @@ export interface Evidence {
   revisitedAt: number | null;
 }
 
-export type WineType = 'tranquilo' | 'espumante' | 'sobremesa' | 'fortificado';
-export type WineStyle = 'branco' | 'tinto' | 'rose';
+export type { WineType, WineStyle } from './asi-vocabulary';
 
+export type Level3 = 'low' | 'medium' | 'high';
+
+/** Exame visual (Appearance). */
 export interface VisualAnalysis {
-  limpidez: string;
-  transparencia: string;
-  intensidade: string;
-  corNucleoBorda: string;
+  coreColour: CoreColour | null;
+  /** Cor da taça ilustrada. Vem da cor escolhida ou da leitura de rótulo. */
   corHex?: string;
-  perlage?: string;
+  intensity: Level3 | null;
+  clarity: CodeOf<typeof CLARITY> | null;
+  brightness: CodeOf<typeof BRIGHTNESS> | null;
+  rimVariation: CodeOf<typeof RIM_VARIATION> | null;
+  viscosity: Level3 | null;
+  observations: CodeOf<typeof OBSERVATIONS>[];
 }
 
+/** Exame olfativo (Nose). */
 export interface OlfatoAnalysis {
-  condicao: string;
-  intensidade: string;
+  condition: CodeOf<typeof CONDITION> | null;
+  faults: Fault[];
+  intensity: Level3 | null;
+  oak: CodeOf<typeof OAK> | null;
+  maturity: CodeOf<typeof NOSE_MATURITY> | null;
+  /** Descrição livre dos aromas. Os descritores ficam em `aromaTags`. */
   aromas: string;
-  desenvolvimento: string;
 }
 
+/** Exame gustativo (Taste). */
 export interface PaladarAnalysis {
-  docura: string;
-  acidez: string;
-  tanino: string;
+  condition: CodeOf<typeof CONDITION> | null;
+  faults: Fault[];
+  sweetness: CodeOf<typeof SWEETNESS> | null;
+  sparkle: CodeOf<typeof SPARKLE> | null;
+  body: CodeOf<typeof BODY> | null;
+  texture: CodeOf<typeof TEXTURE>[];
+  acidity: Level3 | null;
+  flavourIntensity: Level3 | null;
+  oak: CodeOf<typeof OAK> | null;
+  maturity: CodeOf<typeof PALATE_MATURITY> | null;
+  tanninLevel: Level3 | null;
+  tanninQuality: CodeOf<typeof TANNIN_QUALITY>[];
+  alcohol: CodeOf<typeof ALCOHOL> | null;
+  /** Teor alcoólico do rótulo, ex.: "13,5%". */
+  abv: string;
+  finish: CodeOf<typeof FINISH> | null;
   aromasBoca: string;
-  corpo: string;
-  alcool: string;
   retrogosto: string;
-  persistencia: string;
 }
 
+/** Conclusões. As estrelas são o gosto pessoal; `asiQuality` é o julgamento técnico. */
 export interface ConclusaoAnalysis {
-  guarda: string;
-  preco: string;
-  qualidade: string;
   avaliacaoEstrelas: Rating;
-  harmonizacao: string;
   impressaoFinal: string;
+  harmonizacao: string;
+  preco: string;
+  asiQuality: CodeOf<typeof ASI_QUALITY> | null;
+  ageing: Ageing | null;
+  vinification: Vinification[];
+  climate: CodeOf<typeof CLIMATE> | null;
+  climateType: CodeOf<typeof CLIMATE_TYPE> | null;
+}
+
+export interface TemperatureRange {
+  min: number;
+  max: number;
+}
+
+/** Serviço e harmonização (Service & Food). */
+export interface ServicoAnalysis {
+  temperature: TemperatureRange | null;
+  glass: CodeOf<typeof GLASS> | null;
+  decant: CodeOf<typeof DECANT> | null;
+  dishStyle: CodeOf<typeof DISH_STYLE> | null;
+  pairingComponents: CodeOf<typeof PAIRING_COMPONENTS>[];
 }
 
 export interface WineEntry {
   id: string;
-  schemaVersion: 2;
+  schemaVersion: 3;
   revision: number;
   produtor: string;
   vinho: string;
@@ -58,15 +129,25 @@ export interface WineEntry {
   uvas: string;
   regiaoPais: string;
   tipo: WineType | null;
+  /** Cor principal (Main Colour). Vale também para espumante. */
   estilo: WineStyle | null;
+  /** Branco com maceração nas cascas (vinho laranja). */
+  skinContact: boolean;
+  /** Subestilo de fortificado (Porto Tawny, Jerez Fino...). */
+  subestilo: Substyle | null;
   visual: VisualAnalysis;
   olfato: OlfatoAnalysis;
   paladar: PaladarAnalysis;
   conclusao: ConclusaoAnalysis;
+  servico: ServicoAnalysis;
+  /**
+   * Texto que não tem equivalente na grade ASI, por caminho do campo (ex.:
+   * `'paladar.acidity': 'Média+'`). Vem das fichas anteriores à grade e da leitura
+   * de rótulo. Sai quando a pessoa escolhe um valor ASI para o campo.
+   */
+  legacyNotes: Record<string, string>;
   tags?: string[];
   dataDegustacao: string;
-  temperaturaServico?: string;
-  decantacao?: string;
   criadoEm: number;
   atualizadoEm: number;
   kind: RecordKind;
@@ -99,6 +180,8 @@ export interface EntryDraft {
   photoBlob?: Blob | null;
 }
 
+export type SheetLevel = 'iniciante' | 'avancado';
+
 export interface Preferences {
   theme: 'paper' | 'night';
   textures: boolean;
@@ -107,6 +190,8 @@ export interface Preferences {
   demoFavorites: Record<string, boolean>;
   /** Quando a pessoa aceitou enviar fotos de rótulo ao Gemini. Ausente em dados antigos. */
   aiConsentAt: number | null;
+  /** Nível da ficha. O Iniciante mostra só cor, aromas, doçura, corpo e nota. */
+  sheetLevel: SheetLevel;
 }
 
 export interface StoreSnapshot {

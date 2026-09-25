@@ -8,5 +8,6 @@ export function createPreferences(legacyTheme: string | null): Preferences {
     showDemo: true,
     demoFavorites: {},
     aiConsentAt: null,
+    sheetLevel: 'iniciante',
   };
 }

@@ -9,6 +9,7 @@ import type {
   PhotoChange,
 } from '../domain/wine-entry';
 import { createPreferences } from '../domain/preferences';
+import { needsUpgrade, upgradeToV3 } from '../domain/asi-convert';
 import { EMPTY_BACKUP_STATUS, type BackupStatus } from '../domain/backup-reminder';
 
 export class StorageUnavailableError extends Error {
@@ -73,10 +74,17 @@ export function createWineRepository(db: IDBPDatabase<WineDb>): WineRepository {
 
         await tx.done;
 
+        // Rede de segurança: se a migração para a grade ASI não rodou, converte em memória.
         return {
-          entries: entries || [],
-          draft: draft || null,
-          preferences: settings || createPreferences(null),
+          entries: (entries || []).map((entry) =>
+            needsUpgrade(entry) ? (upgradeToV3(entry as unknown as Record<string, any>) as WineEntry) : entry
+          ),
+          draft:
+            draft && needsUpgrade(draft.entry)
+              ? { ...draft, entry: upgradeToV3(draft.entry as unknown as Record<string, any>) as WineEntry }
+              : draft || null,
+          // Preferência nova ganha o valor padrão sem regravar o que a pessoa escolheu.
+          preferences: { ...createPreferences(null), ...settings },
         };
       } catch (err: any) {
         if (err.name === 'QuotaExceededError') {

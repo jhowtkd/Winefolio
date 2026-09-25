@@ -1,5 +1,6 @@
 import type { WineEntry, EntryDraft } from '../../domain/wine-entry';
 import { createEntry } from '../../domain/wine-factory';
+import { upgradeToV3 } from '../../domain/asi-convert';
 
 export interface LegacyImportResult {
   entries: WineEntry[];
@@ -48,59 +49,8 @@ export function adaptLegacy(value: unknown, now: Date = new Date()): LegacyImpor
     entry.safra = String(legacy.safra || '').trim();
     entry.uvas = String(legacy.uvas || '').trim();
     entry.regiaoPais = String(legacy.regiaoPais || '').trim();
-    entry.tipo = legacy.tipo || null;
-    entry.estilo = legacy.estilo || null;
-
-    if (legacy.visual) {
-      entry.visual = {
-        limpidez: String(legacy.visual.limpidez || ''),
-        transparencia: String(legacy.visual.transparencia || ''),
-        intensidade: String(legacy.visual.intensidade || ''),
-        corNucleoBorda: String(legacy.visual.corNucleoBorda || ''),
-        corHex: legacy.visual.corHex,
-        perlage: legacy.visual.perlage,
-      };
-    }
-
-    if (legacy.olfato) {
-      entry.olfato = {
-        condicao: String(legacy.olfato.condicao || ''),
-        intensidade: String(legacy.olfato.intensidade || ''),
-        aromas: String(legacy.olfato.aromas || ''),
-        desenvolvimento: String(legacy.olfato.desenvolvimento || ''),
-      };
-    }
-
-    if (legacy.paladar) {
-      entry.paladar = {
-        docura: String(legacy.paladar.docura || ''),
-        acidez: String(legacy.paladar.acidez || ''),
-        tanino: String(legacy.paladar.tanino || ''),
-        aromasBoca: String(legacy.paladar.aromasBoca || ''),
-        corpo: String(legacy.paladar.corpo || ''),
-        alcool: String(legacy.paladar.alcool || ''),
-        retrogosto: String(legacy.paladar.retrogosto || ''),
-        persistencia: String(legacy.paladar.persistencia || ''),
-      };
-    }
-
-    if (legacy.conclusao) {
-      entry.conclusao = {
-        guarda: String(legacy.conclusao.guarda || ''),
-        preco: String(legacy.conclusao.preco || ''),
-        qualidade: String(legacy.conclusao.qualidade || ''),
-        avaliacaoEstrelas: typeof legacy.conclusao.avaliacaoEstrelas === 'number' && legacy.conclusao.avaliacaoEstrelas >= 1 && legacy.conclusao.avaliacaoEstrelas <= 5
-          ? (legacy.conclusao.avaliacaoEstrelas as any)
-          : null,
-        harmonizacao: String(legacy.conclusao.harmonizacao || ''),
-        impressaoFinal: String(legacy.conclusao.impressaoFinal || ''),
-      };
-    }
-
     entry.tags = Array.isArray(legacy.tags) ? legacy.tags.map(String) : [];
     entry.dataDegustacao = String(legacy.dataDegustacao || entry.dataDegustacao);
-    entry.temperaturaServico = legacy.temperaturaServico ? String(legacy.temperaturaServico) : undefined;
-    entry.decantacao = legacy.decantacao ? String(legacy.decantacao) : undefined;
     entry.criadoEm = typeof legacy.criadoEm === 'number' ? legacy.criadoEm : entry.criadoEm;
     entry.atualizadoEm = typeof legacy.atualizadoEm === 'number' ? legacy.atualizadoEm : entry.atualizadoEm;
 
@@ -119,7 +69,25 @@ export function adaptLegacy(value: unknown, now: Date = new Date()): LegacyImpor
       }
     }
 
-    entries.push(entry);
+    // A versão 1 gravava a análise sensorial em texto livre, como a versão 2.
+    const stars = legacy.conclusao?.avaliacaoEstrelas;
+    const upgraded = upgradeToV3({
+      ...entry,
+      schemaVersion: 2,
+      tipo: legacy.tipo,
+      estilo: legacy.estilo,
+      visual: legacy.visual ?? {},
+      olfato: legacy.olfato ?? {},
+      paladar: legacy.paladar ?? {},
+      conclusao: {
+        ...legacy.conclusao,
+        avaliacaoEstrelas: typeof stars === 'number' && stars >= 1 && stars <= 5 ? stars : null,
+      },
+      temperaturaServico: legacy.temperaturaServico,
+      decantacao: legacy.decantacao,
+    }) as WineEntry;
+
+    entries.push(upgraded);
   }
 
   return {

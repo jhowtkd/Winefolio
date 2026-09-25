@@ -5,6 +5,7 @@ import { BottleArt } from '../../components/proto/BottleArt';
 import { Icon } from '../../components/proto/Sprite';
 import { Stars, shortDate } from '../../components/proto/bits';
 import { usePhotoUrl } from './usePhotoUrl';
+import { styleLabel as insightStyleLabel } from '../../domain/insights';
 
 interface WineCardProps {
   entry: WineEntry;
@@ -13,12 +14,12 @@ interface WineCardProps {
   onToggleFavorite: (entry: WineEntry) => void;
 }
 
+/** O texto vem do mesmo rótulo das estatísticas; a classe de cor segue o estilo. */
 function styleLabel(entry: WineEntry): { text: string; cls: string } {
   if (entry.tipo === 'espumante') return { text: 'Espumante', cls: 'espumante' };
-  if (entry.estilo === 'tinto') return { text: 'Tinto', cls: 'tinto' };
-  if (entry.estilo === 'branco') return { text: 'Branco', cls: 'branco' };
-  if (entry.estilo === 'rose') return { text: 'Rosé', cls: 'rose' };
-  return { text: 'ANOTAÇÃO', cls: '' };
+  const text = insightStyleLabel(entry);
+  if (text === 'Sem estilo') return { text: 'ANOTAÇÃO', cls: '' };
+  return { text, cls: entry.estilo ?? '' };
 }
 
 /** Cartão de memória no estilo scrapbook do protótipo (fita, rótulo ilustrado, nota manuscrita). */

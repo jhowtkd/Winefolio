@@ -29,12 +29,16 @@ describe('applyLabelAnalysis', () => {
     assert.strictEqual(next.vinho, 'Don Melchor');
     assert.strictEqual(next.tipo, 'fortificado');
     assert.strictEqual(next.estilo, 'tinto');
-    assert.strictEqual(next.paladar.alcool, '14%');
-    assert.strictEqual(next.temperaturaServico, '16°C - 18°C');
-    assert.strictEqual(next.decantacao, '45 min');
-    assert.strictEqual(next.conclusao.guarda, 'Beber ou guardar 3-5 anos');
+    assert.strictEqual(next.paladar.abv, '14%');
+    assert.deepStrictEqual(next.servico.temperature, { min: 16, max: 18 });
+    assert.strictEqual(next.servico.decant, 'aerate');
+    assert.strictEqual(next.conclusao.ageing, '3-6');
+    assert.deepStrictEqual(next.legacyNotes, {
+      'servico.decant': '45 min',
+      'conclusao.ageing': 'Beber ou guardar 3-5 anos',
+    });
     assert.strictEqual(next.conclusao.harmonizacao, 'Cordeiro');
-    assert.strictEqual(next.conclusao.qualidade, '');
+    assert.strictEqual(next.conclusao.asiQuality, null);
     assert.strictEqual(next.conclusao.impressaoFinal, '');
     assert.strictEqual(next.olfato.aromas, 'Cassis, Cedro');
     assert.deepStrictEqual(next.aromaTags, ['Cassis', 'Cedro']);
@@ -57,7 +61,42 @@ describe('proveniência da leitura de rótulo', () => {
   it('não escreve a impressão final nem a qualidade', () => {
     const next = applyLabelAnalysis(createEntry('x'), { resumo: 'Texto do modelo', qualidadeEstimada: 'Excelente' });
     assert.strictEqual(next.conclusao.impressaoFinal, '');
-    assert.strictEqual(next.conclusao.qualidade, '');
+    assert.strictEqual(next.conclusao.asiQuality, null);
+  });
+
+  it('não troca valor da grade que a pessoa já escolheu', () => {
+    const entry = createEntry('x');
+    entry.servico = { ...entry.servico, temperature: { min: 8, max: 10 } };
+    const next = applyLabelAnalysis(entry, { temperaturaServico: '16°C - 18°C' });
+    assert.deepStrictEqual(next.servico.temperature, { min: 8, max: 10 });
+    assert.strictEqual(next.provenance['servico.temperature'], undefined);
+  });
+
+  it('marca como sugestão a nota que não coube na grade', () => {
+    const next = applyLabelAnalysis(createEntry('x'), { temperaturaServico: 'Bem gelado' });
+    assert.strictEqual(next.servico.temperature, null);
+    assert.strictEqual(next.legacyNotes['servico.temperature'], 'Bem gelado');
+    assert.strictEqual(next.provenance['servico.temperature'], 'ai-unverified');
+  });
+
+  it('a leitura que diz "branco" não desfaz o laranja marcado pela pessoa', () => {
+    const orange = { ...createEntry('x'), estilo: 'branco' as const, skinContact: true };
+    assert.strictEqual(applyLabelAnalysis(orange, { estilo: 'branco' }).skinContact, true);
+    assert.strictEqual(applyLabelAnalysis(orange, { estilo: 'tinto' }).skinContact, false);
+    assert.strictEqual(applyLabelAnalysis(orange, {}).skinContact, true);
+  });
+
+  it('estilo e tipo lidos do rótulo seguem as regras do editor', () => {
+    const entry = { ...createEntry('x'), tipo: 'fortificado' as const, estilo: 'tinto' as const, subestilo: 'port-tawny' as const };
+    entry.visual = { ...entry.visual, coreColour: 'ruby', corHex: '#83122D' };
+    const next = applyLabelAnalysis(entry, { estilo: 'branco', tipo: 'tranquilo' });
+    assert.deepStrictEqual([next.visual.coreColour, next.visual.corHex], [null, undefined]);
+    assert.strictEqual(next.subestilo, null);
+  });
+
+  it('vinho laranja vira branco com contato com as cascas', () => {
+    const next = applyLabelAnalysis(createEntry('x'), { estilo: 'laranja', tipo: 'espumante' });
+    assert.deepStrictEqual([next.tipo, next.estilo, next.skinContact], ['espumante', 'branco', true]);
   });
 
   it('campo editado depois da leitura passa a ser da pessoa', () => {
