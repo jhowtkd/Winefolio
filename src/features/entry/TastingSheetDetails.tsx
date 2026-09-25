@@ -26,6 +26,9 @@ import {
   Tag,
 } from 'lucide-react';
 import { aiSuggestedFields } from '../../domain/label-fill';
+import { ASI_FIELDS, displayValue, orphanNotes, type SheetSection } from '../../domain/asi-fields';
+import { groupAromas } from '../../domain/aroma-catalog';
+import { ASI_QUALITY, findOption, SUBSTYLES, WINE_STYLES, WINE_TYPES } from '../../domain/asi-vocabulary';
 
 interface TastingSheetDetailsProps {
   entry: WineEntry;
@@ -45,14 +48,87 @@ const AI_FIELD_LABELS: Record<string, string> = {
   regiaoPais: 'região',
   tipo: 'tipo',
   estilo: 'estilo',
-  temperaturaServico: 'temperatura',
-  decantacao: 'decantação',
+  'servico.temperature': 'temperatura',
+  'servico.decant': 'decantação',
   'visual.corHex': 'cor',
   'olfato.aromas': 'aromas',
-  'paladar.alcool': 'álcool',
-  'conclusao.guarda': 'guarda',
+  'paladar.abv': 'teor alcoólico',
+  'conclusao.ageing': 'guarda',
   'conclusao.harmonizacao': 'harmonização',
 };
+
+/** Campos com lugar próprio na ficha (cabeçalho, aromas agrupados, anotação manuscrita). */
+const SHOWN_ELSEWHERE = new Set([
+  'skinContact',
+  'subestilo',
+  'aromaTags',
+  'conclusao.avaliacaoEstrelas',
+  'conclusao.asiQuality',
+  'conclusao.impressaoFinal',
+  'conclusao.harmonizacao',
+  'conclusao.preco',
+]);
+
+const BLOCK = 'p-4 rounded-xs border border-[#cfc4b0]/70 dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] space-y-3';
+const BLOCK_TITLE =
+  'font-serif font-bold text-sm text-[#793b46] dark:text-[#b05e6e] uppercase tracking-wider border-b border-[#cfc4b0]/50 pb-1.5 flex items-center justify-between';
+const SMALL = 'text-[#6b6458] dark:text-[#9e9687]';
+
+/** Os campos preenchidos de uma seção da grade, com as notas anteriores a ela. */
+const GridRows: React.FC<{ entry: WineEntry; section: SheetSection }> = ({ entry, section }) => {
+  const rows = ASI_FIELDS.filter((f) => f.section === section && !SHOWN_ELSEWHERE.has(f.path))
+    .map((field) => ({ field, value: displayValue(entry, field), note: entry.legacyNotes?.[field.path] }))
+    .filter((row) => row.value || row.note);
+  const notes = orphanNotes(entry, section);
+  if (rows.length === 0 && notes.length === 0) return null;
+  return (
+    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs">
+      {rows.map(({ field, value, note }) => (
+        <div key={field.path} className={field.kind === 'longtext' ? 'sm:col-span-2' : undefined}>
+          <dt className={`${SMALL} text-[10px] uppercase`}>
+            {field.pt}
+            {field.en && <span className="normal-case"> · {field.en}</span>}
+          </dt>
+          <dd className="font-medium">
+            {value?.map((term, i) => (
+              <span key={i}>
+                {i > 0 && ', '}
+                {term.pt}
+                {term.en && term.en.toLowerCase() !== term.pt.toLowerCase() && (
+                  <span className={`${SMALL} font-normal`}> ({term.en})</span>
+                )}
+              </span>
+            ))}
+            {note && (
+              <span className={`block ${SMALL} font-normal italic`}>
+                {value ? 'Anotação anterior: ' : 'Fora da grade ASI: '}
+                {note}
+              </span>
+            )}
+          </dd>
+        </div>
+      ))}
+      {notes.map((note) => (
+        <div key={note.path}>
+          <dt className={`${SMALL} text-[10px] uppercase`}>{note.pt}</dt>
+          <dd className={`${SMALL} italic`}>Fora da grade ASI: {note.text}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+};
+
+/** "Espumante · Rosé", "Branco · Laranja", "Fortificado · Tawny". */
+function classificationLabel(entry: WineEntry): string {
+  return [
+    findOption(WINE_TYPES, entry.tipo)?.pt,
+    findOption(WINE_STYLES, entry.estilo)?.pt,
+    entry.skinContact ? 'Laranja' : undefined,
+    findOption(SUBSTYLES, entry.subestilo)?.pt,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
 
 export const TastingSheetDetails: React.FC<TastingSheetDetailsProps> = ({
   entry,
@@ -148,15 +224,17 @@ export const TastingSheetDetails: React.FC<TastingSheetDetailsProps> = ({
                 <span className="text-[10px] font-mono-code font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[#f2ecdf] dark:bg-[#25221d] text-[#793b46] dark:text-[#b05e6e] border border-[#cfc4b0]/70">
                   Ficha Técnica Nº {entry.id.slice(-6).toUpperCase()}
                 </span>
-                {entry.tipo === 'espumante' ? (
-                  <span className="text-[10px] font-mono-code px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                    Espumante
+                {classificationLabel(entry) && (
+                  <span
+                    className={`text-[10px] font-mono-code px-2 py-0.5 rounded border ${
+                      entry.tipo === 'espumante'
+                        ? 'bg-amber-100 text-amber-900 border-amber-300'
+                        : 'bg-[#f2ecdf] dark:bg-[#25221d] text-[#312d26] dark:text-[#eee7db] border-[#cfc4b0]/70'
+                    }`}
+                  >
+                    {classificationLabel(entry)}
                   </span>
-                ) : entry.estilo ? (
-                  <span className="text-[10px] font-mono-code px-2 py-0.5 rounded capitalize bg-[#f2ecdf] dark:bg-[#25221d] text-[#312d26] dark:text-[#eee7db] border border-[#cfc4b0]/70">
-                    Vinho {entry.estilo}
-                  </span>
-                ) : null}
+                )}
                 {entry.kind === 'demo' && (
                   <span className="text-[10px] font-mono-code px-2 py-0.5 rounded bg-blue-100 text-blue-900 border border-blue-300 font-bold">
                     DEMO
@@ -280,34 +358,15 @@ export const TastingSheetDetails: React.FC<TastingSheetDetailsProps> = ({
                 </div>
               )}
 
-              {entry.conclusao?.guarda && (
-                <div className="flex items-center justify-between">
-                  <span className="text-[#6b6458] dark:text-[#9e9687] flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5" />
-                    Potencial de Guarda:
-                  </span>
-                  <span className="font-medium text-[#312d26] dark:text-[#eee7db]">
-                    {entry.conclusao.guarda}
-                  </span>
-                </div>
-              )}
             </div>
 
             {/* Tags e Palavras-chave */}
-            {((entry.aromaTags && entry.aromaTags.length > 0) || (entry.tags && entry.tags.length > 0)) && (
+            {entry.tags && entry.tags.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-[11px] font-mono-code uppercase tracking-wider text-[#6b6458] dark:text-[#9e9687]">
-                  Marcadores & Aromas
+                  Marcadores
                 </h4>
                 <div className="flex flex-wrap gap-1.5">
-                  {(entry.aromaTags || []).map((aroma) => (
-                    <span
-                      key={aroma}
-                      className="px-2 py-0.5 rounded-full text-xs bg-[#f2ecdf] dark:bg-[#25221d] text-[#793b46] dark:text-[#b05e6e] border border-[#cfc4b0]/70 font-medium"
-                    >
-                      {aroma}
-                    </span>
-                  ))}
                   {(entry.tags || []).map((tag) => (
                     <span
                       key={tag}
@@ -323,10 +382,12 @@ export const TastingSheetDetails: React.FC<TastingSheetDetailsProps> = ({
 
           {/* Coluna da Direita: As 3 Etapas Sensoriais (Visual, Olfato, Paladar) e Conclusão */}
           <div className="md:col-span-7 space-y-6">
-            {/* 1. Análise Visual */}
-            <div className="p-4 rounded-xs border border-[#cfc4b0]/70 dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] space-y-3">
-              <h3 className="font-serif font-bold text-sm text-[#793b46] dark:text-[#b05e6e] uppercase tracking-wider border-b border-[#cfc4b0]/50 pb-1.5 flex items-center justify-between">
-                <span>1. Exame Visual</span>
+            {/* 1. Exame visual */}
+            <section className={BLOCK}>
+              <h3 className={BLOCK_TITLE}>
+                <span>
+                  1. Exame visual <span className="normal-case font-normal text-xs">· Appearance</span>
+                </span>
                 {entry.visual?.corHex && (
                   <span
                     className="w-3.5 h-3.5 rounded-full border border-black/20"
@@ -335,159 +396,77 @@ export const TastingSheetDetails: React.FC<TastingSheetDetailsProps> = ({
                   />
                 )}
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                <div>
-                  <span className="text-[#6b6458] dark:text-[#9e9687] block text-[10px] uppercase">
-                    Limpidez
-                  </span>
-                  <span className="font-medium">{entry.visual?.limpidez || '—'}</span>
-                </div>
-                <div>
-                  <span className="text-[#6b6458] dark:text-[#9e9687] block text-[10px] uppercase">
-                    Intensidade
-                  </span>
-                  <span className="font-medium">{entry.visual?.intensidade || '—'}</span>
-                </div>
-                <div>
-                  <span className="text-[#6b6458] dark:text-[#9e9687] block text-[10px] uppercase">
-                    Transparência
-                  </span>
-                  <span className="font-medium">{entry.visual?.transparencia || '—'}</span>
-                </div>
-              </div>
-              {entry.visual?.corNucleoBorda && (
-                <div className="text-xs pt-1 border-t border-[#cfc4b0]/30">
-                  <span className="text-[#6b6458] dark:text-[#9e9687] text-[10px] uppercase block">
-                    Tonalidade & Halo
-                  </span>
-                  <span className="font-medium">{entry.visual.corNucleoBorda}</span>
-                </div>
-              )}
-              {entry.tipo === 'espumante' && entry.visual?.perlage && (
-                <div className="text-xs pt-1 border-t border-[#cfc4b0]/30">
-                  <span className="text-[#6b6458] dark:text-[#9e9687] text-[10px] uppercase block">
-                    Perlage (Bolhas)
-                  </span>
-                  <span className="font-medium">{entry.visual.perlage}</span>
-                </div>
-              )}
-            </div>
+              <GridRows entry={entry} section="visual" />
+            </section>
 
-            {/* 2. Análise Olfativa */}
-            <div className="p-4 rounded-xs border border-[#cfc4b0]/70 dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] space-y-3">
-              <h3 className="font-serif font-bold text-sm text-[#793b46] dark:text-[#b05e6e] uppercase tracking-wider border-b border-[#cfc4b0]/50 pb-1.5">
-                2. Exame Olfativo
+            {/* 2. Exame olfativo */}
+            <section className={BLOCK}>
+              <h3 className={BLOCK_TITLE}>
+                <span>
+                  2. Exame olfativo <span className="normal-case font-normal text-xs">· Nose</span>
+                </span>
               </h3>
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                <div>
-                  <span className="text-[#6b6458] dark:text-[#9e9687] block text-[10px] uppercase">
-                    Condição
-                  </span>
-                  <span className="font-medium">{entry.olfato?.condicao || '—'}</span>
-                </div>
-                <div>
-                  <span className="text-[#6b6458] dark:text-[#9e9687] block text-[10px] uppercase">
-                    Intensidade
-                  </span>
-                  <span className="font-medium">{entry.olfato?.intensidade || '—'}</span>
-                </div>
-                <div>
-                  <span className="text-[#6b6458] dark:text-[#9e9687] block text-[10px] uppercase">
-                    Evolução
-                  </span>
-                  <span className="font-medium">{entry.olfato?.desenvolvimento || '—'}</span>
-                </div>
-              </div>
-              {entry.olfato?.aromas && (
-                <div className="text-xs pt-1 border-t border-[#cfc4b0]/30">
-                  <span className="text-[#6b6458] dark:text-[#9e9687] text-[10px] uppercase block">
-                    Notas Aromáticas Descritivas
-                  </span>
-                  <p className="font-serif italic text-sm text-[#312d26] dark:text-[#eee7db] mt-0.5">
-                    "{entry.olfato.aromas}"
-                  </p>
+              {entry.aromaTags && entry.aromaTags.length > 0 && (
+                <div className="space-y-1 text-xs">
+                  {groupAromas(entry.aromaTags).map(({ group, descriptors }) => (
+                    <p key={group?.code ?? 'livre'}>
+                      <span className={`${SMALL} text-[10px] uppercase`}>
+                        {group ? `${group.pt} · ${group.en}` : 'Outros'}:
+                      </span>{' '}
+                      <span className="font-medium text-[#793b46] dark:text-[#b05e6e]">{descriptors.join(', ')}</span>
+                    </p>
+                  ))}
                 </div>
               )}
-            </div>
+              <GridRows entry={entry} section="olfato" />
+            </section>
 
-            {/* 3. Análise Gustativa */}
-            <div className="p-4 rounded-xs border border-[#cfc4b0]/70 dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] space-y-3">
-              <h3 className="font-serif font-bold text-sm text-[#793b46] dark:text-[#b05e6e] uppercase tracking-wider border-b border-[#cfc4b0]/50 pb-1.5">
-                3. Exame Gustativo
+            {/* 3. Exame gustativo */}
+            <section className={BLOCK}>
+              <h3 className={BLOCK_TITLE}>
+                <span>
+                  3. Exame gustativo <span className="normal-case font-normal text-xs">· Taste</span>
+                </span>
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-                <div>
-                  <span className="text-[#6b6458] dark:text-[#9e9687] block text-[10px] uppercase">
-                    Doçura
-                  </span>
-                  <span className="font-medium">{entry.paladar?.docura || '—'}</span>
-                </div>
-                <div>
-                  <span className="text-[#6b6458] dark:text-[#9e9687] block text-[10px] uppercase">
-                    Acidez
-                  </span>
-                  <span className="font-medium">{entry.paladar?.acidez || '—'}</span>
-                </div>
-                <div>
-                  <span className="text-[#6b6458] dark:text-[#9e9687] block text-[10px] uppercase">
-                    Taninos
-                  </span>
-                  <span className="font-medium">{entry.paladar?.tanino || '—'}</span>
-                </div>
-                <div>
-                  <span className="text-[#6b6458] dark:text-[#9e9687] block text-[10px] uppercase">
-                    Corpo
-                  </span>
-                  <span className="font-medium">{entry.paladar?.corpo || '—'}</span>
-                </div>
-              </div>
+              <GridRows entry={entry} section="paladar" />
+              <SensoryRadar entry={entry} estilo={entry.estilo} corHex={entry.visual?.corHex} />
+            </section>
 
-              <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-[#cfc4b0]/30">
-                <div>
-                  <span className="text-[#6b6458] dark:text-[#9e9687] block text-[10px] uppercase">
-                    Álcool
+            {/* 4. Serviço, só quando há algo anotado */}
+            {ASI_FIELDS.some((f) => f.section === 'servico' && (displayValue(entry, f) || entry.legacyNotes?.[f.path])) && (
+              <section className={BLOCK}>
+                <h3 className={BLOCK_TITLE}>
+                  <span>
+                    Serviço <span className="normal-case font-normal text-xs">· Service &amp; Food</span>
                   </span>
-                  <span className="font-medium">{entry.paladar?.alcool || '—'}</span>
-                </div>
-                <div>
-                  <span className="text-[#6b6458] dark:text-[#9e9687] block text-[10px] uppercase">
-                    Persistência
-                  </span>
-                  <span className="font-medium">{entry.paladar?.persistencia || '—'}</span>
-                </div>
-              </div>
+                </h3>
+                <GridRows entry={entry} section="servico" />
+              </section>
+            )}
 
-              <SensoryRadar
-                paladar={entry.paladar}
-                estilo={entry.estilo}
-                corHex={entry.visual?.corHex}
-              />
-
-              {entry.paladar?.aromasBoca && (
-                <div className="text-xs pt-1 border-t border-[#cfc4b0]/30">
-                  <span className="text-[#6b6458] dark:text-[#9e9687] text-[10px] uppercase block">
-                    Sensações em Boca
-                  </span>
-                  <p className="font-serif italic text-xs text-[#312d26] dark:text-[#eee7db] mt-0.5">
-                    {entry.paladar.aromasBoca}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* 4. Conclusão & Impressão Final do Sommelier */}
+            {/* Conclusão & Impressão Final do Sommelier */}
             <div className="p-4 sm:p-5 rounded-xs border-2 border-[#793b46]/30 dark:border-[#b05e6e]/30 bg-[#f9f5ed] dark:bg-[#201d18] space-y-3 relative overflow-hidden">
               <div className="flex items-center justify-between border-b border-[#793b46]/20 pb-2">
                 <h3 className="font-serif font-bold text-sm text-[#793b46] dark:text-[#b05e6e] uppercase tracking-wider flex items-center gap-1.5">
                   <Award className="w-4 h-4" />
-                  Conclusão do Degustador
+                  Conclusões
                 </h3>
-                {entry.conclusao?.qualidade && (
-                  <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-[#793b46] text-[#fffaf0]">
-                    {entry.conclusao.qualidade}
+                {findOption(ASI_QUALITY, entry.conclusao?.asiQuality) && (
+                  <span
+                    className="px-2.5 py-0.5 rounded text-xs font-bold bg-[#793b46] text-[#fffaf0]"
+                    title="Qualidade técnica na escala da ASI"
+                  >
+                    {findOption(ASI_QUALITY, entry.conclusao.asiQuality)!.pt}
                   </span>
                 )}
               </div>
+
+              <GridRows entry={entry} section="conclusao" />
+              {!findOption(ASI_QUALITY, entry.conclusao?.asiQuality) && entry.legacyNotes?.['conclusao.asiQuality'] && (
+                <p className={`text-xs ${SMALL} italic`}>
+                  Qualidade anotada antes da grade ASI: {entry.legacyNotes['conclusao.asiQuality']}
+                </p>
+              )}
 
               {entry.conclusao?.impressaoFinal ? (
                 <div className="pt-1">

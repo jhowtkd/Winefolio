@@ -133,6 +133,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
         <div className="setting-row">
           <div>
+            <h3>Ficha completa da ASI</h3>
+            <p>
+              Desligada, a ficha mostra o essencial: cor, aromas, doçura, corpo e nota. Ligada, mostra a
+              grade de degustação da ASI inteira, com serviço e defeitos.
+            </p>
+          </div>
+          <input
+            type="checkbox"
+            aria-label="Ficha completa da ASI"
+            checked={preferences.sheetLevel === 'avancado'}
+            onChange={(e) => onUpdatePreferences({ sheetLevel: e.target.checked ? 'avancado' : 'iniciante' })}
+          />
+        </div>
+
+        <div className="setting-row">
+          <div>
             <h3>Mostrar coleção de exemplo</h3>
             <p>Seis vinhos e relatos fictícios. Seus registros continuam separados.</p>
           </div>

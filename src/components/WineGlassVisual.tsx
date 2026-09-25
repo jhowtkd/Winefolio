@@ -1,5 +1,5 @@
 import React from 'react';
-import { WineStyle } from '../types';
+import type { WineStyle } from '../domain/wine-entry';
 
 interface WineGlassProps {
   colorHex?: string;

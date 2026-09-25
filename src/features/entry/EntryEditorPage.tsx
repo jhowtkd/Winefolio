@@ -5,6 +5,7 @@ import type {
   WineType,
   WineStyle,
   PhotoChange,
+  SheetLevel,
 } from '../../domain/wine-entry';
 import { createEntry } from '../../domain/wine-factory';
 import { COUNTRIES, inferCountryCode } from '../../domain/countries';
@@ -21,21 +22,14 @@ import { analyzeWineLabelPhoto } from '../../services/wineOcrService';
 import { dataUrlToBlob } from '../../utils/imageUtils';
 import { usePhotoUrl } from '../journal/usePhotoUrl';
 import {
-  WINE_COLORS,
-  LIMPIDITY_OPTIONS,
-  TRANSPARENCY_OPTIONS,
-  INTENSITY_OPTIONS,
-  CONDITION_OPTIONS,
-  DEVELOPMENT_OPTIONS,
-  SWEETNESS_OPTIONS,
-  ACIDITY_OPTIONS,
-  TANNIN_OPTIONS,
-  BODY_OPTIONS,
-  PERSISTENCE_OPTIONS,
-  AGING_OPTIONS,
-  QUALITY_OPTIONS,
-  AROMA_CATEGORIES,
-} from '../../data/sommelierData';
+  coreColoursFor,
+  CORE_COLOURS,
+  WINE_STYLES,
+  WINE_TYPES,
+} from '../../domain/asi-vocabulary';
+import { AROMA_GROUPS } from '../../domain/aroma-catalog';
+import { isSectionVisible, setPath, SHEET_SECTIONS, type AsiFieldDef, type SheetSection } from '../../domain/asi-fields';
+import { chipClass, FieldTitle, LegacyNote, SectionFields } from './AsiFields';
 import {
   Save,
   ArrowLeft,
@@ -68,9 +62,11 @@ interface EntryEditorPageProps {
   showToast: (msg: string, type?: 'info' | 'success' | 'warn' | 'error') => void;
   aiConsented: boolean;
   onGrantAiConsent: () => Promise<void>;
+  /** Nível padrão da ficha, escolhido em Ajustes. */
+  sheetLevel?: SheetLevel;
 }
 
-type TabKey = 'geral' | 'visual' | 'olfato' | 'paladar' | 'conclusao';
+type TabKey = SheetSection;
 
 export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
   initialEntry,
@@ -84,6 +80,7 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
   showToast,
   aiConsented,
   onGrantAiConsent,
+  sheetLevel = 'iniciante',
 }) => {
   const isEditingExisting = Boolean(initialEntry);
 
@@ -101,6 +98,8 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
       newOne.origin = fromTemplate.origin ? { ...fromTemplate.origin } : undefined;
       newOne.tipo = fromTemplate.tipo;
       newOne.estilo = fromTemplate.estilo;
+      newOne.skinContact = fromTemplate.skinContact ?? false;
+      newOne.subestilo = fromTemplate.subestilo ?? null;
       newOne.tags = fromTemplate.tags ? [...fromTemplate.tags] : [];
     }
 
@@ -113,6 +112,12 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
   const [pendingAiPhoto, setPendingAiPhoto] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<TabKey>('geral');
+  // "Mostrar grade completa" vale só para esta ficha. O padrão vem de Ajustes.
+  const [showFullGrid, setShowFullGrid] = useState(false);
+  const [showAllAromaGroups, setShowAllAromaGroups] = useState(false);
+  const advanced = sheetLevel === 'avancado' || showFullGrid;
+  const tabs = SHEET_SECTIONS.filter((section) => isSectionVisible(formData, section.key, advanced));
+  const tabIndex = tabs.findIndex((tab) => tab.key === activeTab);
   const [isSaving, setIsSaving] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [tagInput, setTagInput] = useState('');
@@ -332,6 +337,234 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
     }));
   };
 
+  // Se a aba aberta sumiu (a pessoa voltou à ficha essencial), volta para a primeira.
+  useEffect(() => {
+    if (tabIndex === -1) setActiveTab('geral');
+  }, [tabIndex]);
+
+  const LABEL = 'block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1';
+
+  /** Cor oficial da ASI. Sem estilo escolhido, a cor define o estilo. */
+  const renderColour = (field: AsiFieldDef) => {
+    const styles: WineStyle[] = formData.estilo ? [formData.estilo] : ['branco', 'rose', 'tinto'];
+    return (
+      <fieldset>
+        <legend className={LABEL}>
+          <FieldTitle pt={field.pt} en={field.en} />
+        </legend>
+        <div className="space-y-2">
+          {styles.map((style) => (
+            <div key={style}>
+              {!formData.estilo && (
+                <span className="text-[10px] font-mono-code uppercase text-[#6b6458] dark:text-[#9e9687]">
+                  {WINE_STYLES.find((s) => s.code === style)?.pt}
+                </span>
+              )}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {CORE_COLOURS[style].map((colour) => {
+                  const selected = formData.visual.coreColour === colour.code && (formData.estilo ?? style) === style;
+                  return (
+                    <button
+                      key={colour.code}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() =>
+                        setFormData((prev) => {
+                          if (selected) return setPath(prev, 'visual.coreColour', null);
+                          const next = setPath(prev, 'visual.coreColour', colour.code);
+                          return {
+                            ...next,
+                            estilo: prev.estilo ?? style,
+                            visual: { ...next.visual, corHex: colour.hex },
+                          };
+                        })
+                      }
+                      className={`p-2 rounded-xs border text-left flex items-center gap-2 transition-all ${
+                        selected
+                          ? 'border-[#793b46] ring-1 ring-[#793b46] bg-[#f2ecdf] dark:bg-[#2f2a23]'
+                          : 'border-[#cfc4b0]/70 dark:border-[#3d362b] hover:bg-[#fffaf0] dark:hover:bg-[#25221d]'
+                      }`}
+                    >
+                      <span
+                        className="w-4 h-4 rounded-full border border-black/20 shrink-0"
+                        style={{ backgroundColor: colour.hex }}
+                      />
+                      <span className="text-xs leading-tight min-w-0">
+                        {colour.pt}
+                        {colour.en !== colour.pt && <span className="opacity-70"> · {colour.en}</span>}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+        <LegacyNote text={formData.legacyNotes?.['visual.coreColour']} />
+      </fieldset>
+    );
+  };
+
+  /** Descritores agrupados pelos grupos aromáticos da ASI, mais o descritor livre. */
+  const renderAromas = (field: AsiFieldDef) => {
+    const groups = advanced || showAllAromaGroups ? AROMA_GROUPS : AROMA_GROUPS.filter((g) => g.common);
+    const selected = formData.aromaTags ?? [];
+    return (
+      <fieldset className="space-y-3">
+        <legend className={LABEL}>
+          <FieldTitle pt={field.pt} en={field.en} />
+        </legend>
+        <div className="space-y-2">
+          {groups.map((group) => (
+            <div key={group.code} className="space-y-1">
+              <span className="text-[10px] font-mono-code uppercase text-[#6b6458] dark:text-[#9e9687]">
+                {group.pt}
+                {group.en !== group.pt && ` · ${group.en}`}
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {group.descriptors.map((aroma) => {
+                  const isSelected = selected.includes(aroma);
+                  return (
+                    <button
+                      key={aroma}
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={() => (isSelected ? handleRemoveAroma(aroma) : handleAddAroma(aroma))}
+                      className={chipClass(isSelected)}
+                    >
+                      {aroma}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+        {!advanced && (
+          <button type="button" className="text-btn text-xs" onClick={() => setShowAllAromaGroups((v) => !v)}>
+            {showAllAromaGroups ? 'Menos grupos' : 'Mais grupos aromáticos'}
+          </button>
+        )}
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={aromaTagInput}
+            aria-label="Outro aroma"
+            onChange={(e) => setAromaTagInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAddAroma(aromaTagInput);
+                setAromaTagInput('');
+              }
+            }}
+            placeholder="Outro aroma (Enter para incluir)"
+            className="flex-1 px-3 py-1.5 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] text-[#312d26] dark:text-[#eee7db]"
+          />
+        </div>
+        {selected.some((aroma) => !AROMA_GROUPS.some((g) => g.descriptors.includes(aroma))) && (
+          <div className="flex flex-wrap gap-1">
+            {selected
+              .filter((aroma) => !AROMA_GROUPS.some((g) => g.descriptors.includes(aroma)))
+              .map((aroma) => (
+                <button
+                  key={aroma}
+                  type="button"
+                  aria-pressed
+                  aria-label={`Remover ${aroma}`}
+                  onClick={() => handleRemoveAroma(aroma)}
+                  className={chipClass(true)}
+                >
+                  {aroma} &times;
+                </button>
+              ))}
+          </div>
+        )}
+      </fieldset>
+    );
+  };
+
+  const renderStars = (field: AsiFieldDef) => (
+    <fieldset>
+      <legend className={LABEL}>{field.pt}</legend>
+      <div className="flex items-center gap-1.5 pt-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            aria-label={`${star} de 5 estrelas`}
+            aria-pressed={formData.conclusao?.avaliacaoEstrelas === star}
+            onClick={() =>
+              setFormData((prev) => ({
+                ...prev,
+                conclusao: { ...prev.conclusao, avaliacaoEstrelas: star as 1 | 2 | 3 | 4 | 5 },
+              }))
+            }
+            className="p-1 hover:scale-110 transition-transform"
+          >
+            <Star
+              className={`w-6 h-6 ${
+                (formData.conclusao?.avaliacaoEstrelas || 0) >= star
+                  ? 'text-amber-500 fill-amber-500'
+                  : 'text-stone-300 dark:text-stone-700'
+              }`}
+            />
+          </button>
+        ))}
+      </div>
+      <p className="text-[11px] text-[#6b6458] dark:text-[#9e9687] mt-1">
+        O seu gosto. A qualidade técnica da ASI fica à parte, na grade completa.
+      </p>
+    </fieldset>
+  );
+
+  const renderImpression = (field: AsiFieldDef) => (
+    <div>
+      <label
+        htmlFor="impressao-final"
+        className="flex items-center justify-between text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1"
+      >
+        <span>{field.pt}</span>
+        {dictation.supported && (
+          <button
+            type="button"
+            onClick={dictation.toggle}
+            aria-label="Ditar impressão final"
+            className={`p-1.5 rounded-xs border transition-colors ${
+              dictation.listening
+                ? 'border-[#793b46] bg-[#793b46] text-[#fffaf0]'
+                : 'border-[#cfc4b0] dark:border-[#3d362b] text-[#6b6458] dark:text-[#9e9687] hover:text-[#793b46]'
+            }`}
+          >
+            {dictation.listening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+          </button>
+        )}
+      </label>
+      <textarea
+        id="impressao-final"
+        rows={4}
+        value={formData.conclusao?.impressaoFinal || ''}
+        onChange={(e) =>
+          setFormData((prev) => ({ ...prev, conclusao: { ...prev.conclusao, impressaoFinal: e.target.value } }))
+        }
+        placeholder="O que ficou na memória: equilíbrio, emoção, com quem foi..."
+        className="w-full px-3 py-2 text-sm sm:text-base font-hand rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] text-[#312d26] dark:text-[#eee7db] leading-relaxed"
+      />
+      {dictation.interim && (
+        <p className="mt-1 text-xs italic text-[#6b6458] dark:text-[#9e9687]">{dictation.interim}</p>
+      )}
+      {dictation.error && <p className="mt-1 text-xs text-[#793b46] dark:text-[#b05e6e]">{dictation.error}</p>}
+    </div>
+  );
+
+  const renderCustomField = (field: AsiFieldDef): React.ReactNode | undefined => {
+    if (field.kind === 'colour') return renderColour(field);
+    if (field.kind === 'aromas') return renderAromas(field);
+    if (field.kind === 'stars') return renderStars(field);
+    if (field.path === 'conclusao.impressaoFinal') return renderImpression(field);
+    return undefined;
+  };
+
   return (
     <ModalDialog
       label={isEditingExisting ? 'Winefolio / editar página' : 'Winefolio / uma nova página'}
@@ -430,26 +663,45 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
         className="p-6 sm:p-8 border border-[#cfc4b0] dark:border-[#3d362b] rounded-xs shadow-md space-y-6"
       >
 
+        {/* Nível da ficha: o Iniciante mostra só o essencial da grade ASI */}
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <p className="text-[#6b6458] dark:text-[#9e9687]">
+            {advanced
+              ? 'Grade ASI completa.'
+              : 'Ficha essencial: cor, aromas, doçura, corpo e nota.'}
+          </p>
+          {sheetLevel !== 'avancado' && (
+            <button
+              type="button"
+              aria-pressed={showFullGrid}
+              onClick={() => setShowFullGrid((v) => !v)}
+              className="text-btn"
+            >
+              {showFullGrid ? 'Voltar à ficha essencial' : 'Mostrar grade completa'}
+            </button>
+          )}
+        </div>
+
         {/* Abas das Etapas da Ficha */}
-        <div className="flex items-center gap-1 border-b border-[#cfc4b0]/70 dark:border-[#3d362b] overflow-x-auto pb-px text-xs">
-          {[
-            { key: 'geral', label: '1. Geral & Rótulo' },
-            { key: 'visual', label: '2. Visual' },
-            { key: 'olfato', label: '3. Olfato' },
-            { key: 'paladar', label: '4. Paladar' },
-            { key: 'conclusao', label: '5. Conclusão' },
-          ].map((tab) => (
+        <div
+          role="tablist"
+          aria-label="Etapas da ficha"
+          className="flex items-center gap-1 border-b border-[#cfc4b0]/70 dark:border-[#3d362b] overflow-x-auto pb-px text-xs"
+        >
+          {tabs.map((tab, index) => (
             <button
               key={tab.key}
               type="button"
-              onClick={() => setActiveTab(tab.key as TabKey)}
+              role="tab"
+              aria-selected={activeTab === tab.key}
+              onClick={() => setActiveTab(tab.key)}
               className={`py-2 px-3.5 border-b-2 font-medium whitespace-nowrap transition-all ${
                 activeTab === tab.key
                   ? 'border-[#793b46] text-[#793b46] dark:text-[#b05e6e] font-bold'
                   : 'border-transparent text-[#6b6458] dark:text-[#9e9687] hover:text-[#312d26] dark:hover:text-[#eee7db]'
               }`}
             >
-              {tab.label}
+              {index + 1}. {tab.pt}
             </button>
           ))}
         </div>
@@ -516,49 +768,71 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
+                    <label htmlFor="entry-tipo" className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
                       Tipo
                     </label>
                     <select
-                      value={formData.tipo}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          tipo: e.target.value as WineType,
-                          estilo: e.target.value === 'espumante' ? null : formData.estilo,
-                        })
-                      }
+                      id="entry-tipo"
+                      value={formData.tipo ?? ''}
+                      onChange={(e) => {
+                        const tipo = (e.target.value as WineType) || null;
+                        setFormData((prev) => ({
+                          ...prev,
+                          tipo,
+                          subestilo: tipo === 'fortificado' ? prev.subestilo : null,
+                        }));
+                      }}
                       className="w-full px-3 py-2 text-xs sm:text-sm rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] text-[#312d26] dark:text-[#eee7db]"
                     >
-                      <option value="tranquilo">Tranquilo</option>
-                      <option value="espumante">Espumante</option>
-                      <option value="sobremesa">Sobremesa</option>
-                      <option value="fortificado">Fortificado</option>
+                      <option value="">Não informado</option>
+                      {WINE_TYPES.map((type) => (
+                        <option key={type.code} value={type.code}>
+                          {type.pt}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                      Estilo
+                    <label htmlFor="entry-estilo" className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
+                      Cor principal
                     </label>
                     <select
-                      value={formData.estilo || ''}
-                      disabled={formData.tipo === 'espumante'}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          estilo: (e.target.value as WineStyle) || null,
-                        })
-                      }
-                      className="w-full px-3 py-2 text-xs sm:text-sm rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] text-[#312d26] dark:text-[#eee7db] capitalize disabled:opacity-50"
+                      id="entry-estilo"
+                      value={formData.estilo ?? ''}
+                      onChange={(e) => {
+                        const estilo = (e.target.value as WineStyle) || null;
+                        setFormData((prev) => {
+                          // A cor escolhida precisa existir na escala do novo estilo.
+                          const keepColour = coreColoursFor(estilo).some((c) => c.code === prev.visual.coreColour);
+                          return {
+                            ...prev,
+                            estilo,
+                            skinContact: estilo === 'branco' ? prev.skinContact : false,
+                            visual: keepColour
+                              ? prev.visual
+                              : { ...prev.visual, coreColour: null, corHex: prev.visual.coreColour ? undefined : prev.visual.corHex },
+                          };
+                        });
+                      }}
+                      className="w-full px-3 py-2 text-xs sm:text-sm rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] text-[#312d26] dark:text-[#eee7db]"
                     >
-                      <option value="tinto">Tinto</option>
-                      <option value="branco">Branco</option>
-                      <option value="rose">Rosé</option>
-                      <option value="laranja">Laranja</option>
+                      <option value="">Não informada</option>
+                      {WINE_STYLES.map((style) => (
+                        <option key={style.code} value={style.code}>
+                          {style.pt}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
+
+                <SectionFields
+                  section="geral"
+                  entry={formData}
+                  advanced={advanced}
+                  onChange={setFormData}
+                />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -702,565 +976,15 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
             </div>
           )}
 
-          {/* ABA 2: VISUAL */}
-          {activeTab === 'visual' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                    Limpidez
-                  </label>
-                  <select
-                    value={formData.visual?.limpidez || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        visual: { ...formData.visual!, limpidez: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-2 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
-                  >
-                    {LIMPIDITY_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                    Intensidade
-                  </label>
-                  <select
-                    value={formData.visual?.intensidade || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        visual: { ...formData.visual!, intensidade: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-2 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
-                  >
-                    {INTENSITY_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                    Transparência
-                  </label>
-                  <select
-                    value={formData.visual?.transparencia || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        visual: { ...formData.visual!, transparencia: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-2 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
-                  >
-                    {TRANSPARENCY_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Tonalidades de Cor do Vinho */}
-              <div>
-                <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-2">
-                  Cor do Núcleo e Reflexos
-                </label>
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                  {WINE_COLORS.map((col) => {
-                    const isSelected = formData.visual?.corHex === col.hex;
-                    return (
-                      <button
-                        key={col.label}
-                        type="button"
-                        onClick={() =>
-                          setFormData({
-                            ...formData,
-                            visual: {
-                              ...formData.visual!,
-                              corNucleoBorda: col.label,
-                              corHex: col.hex,
-                            },
-                          })
-                        }
-                        className={`p-2 rounded-xs border text-left flex items-center gap-2 transition-all ${
-                          isSelected
-                            ? 'border-[#793b46] ring-1 ring-[#793b46] bg-[#f2ecdf]'
-                            : 'border-[#cfc4b0]/70 hover:bg-[#fffaf0]'
-                        }`}
-                      >
-                        <span
-                          className="w-4 h-4 rounded-full border border-black/20 shrink-0"
-                          style={{ backgroundColor: col.hex }}
-                        />
-                        <span className="text-xs truncate">{col.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {formData.tipo === 'espumante' && (
-                <div>
-                  <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                    Perlage (Bolhas)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.visual?.perlage || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        visual: { ...formData.visual!, perlage: e.target.value },
-                      })
-                    }
-                    placeholder="Ex: Fina, abundante, persistente"
-                    className="w-full px-3 py-2 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ABA 3: OLFATO */}
-          {activeTab === 'olfato' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                    Condição Olfativa
-                  </label>
-                  <select
-                    value={formData.olfato?.condicao || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        olfato: { ...formData.olfato!, condicao: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-2 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
-                  >
-                    {CONDITION_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                    Intensidade Olfativa
-                  </label>
-                  <select
-                    value={formData.olfato?.intensidade || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        olfato: { ...formData.olfato!, intensidade: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-2 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
-                  >
-                    {INTENSITY_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                    Evolução / Desenvolvimento
-                  </label>
-                  <select
-                    value={formData.olfato?.desenvolvimento || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        olfato: { ...formData.olfato!, desenvolvimento: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-2 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
-                  >
-                    {DEVELOPMENT_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Descrição dos Aromas */}
-              <div>
-                <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                  Notas Aromáticas Descritivas
-                </label>
-                <textarea
-                  rows={3}
-                  value={formData.olfato?.aromas || ''}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      olfato: { ...formData.olfato!, aromas: e.target.value },
-                    })
-                  }
-                  placeholder="Descreva as sensações no nariz (ex: frutas vermelhas frescas, framboesa, violeta, baunilha e toque mineral)..."
-                  className="w-full px-3 py-2 text-xs sm:text-sm rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
-                />
-              </div>
-
-              {/* Rápido Seletor de Aromas */}
-              <div className="space-y-3">
-                <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db]">
-                  Aromas Frequentes (Clique para incluir):
-                </label>
-                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                  {AROMA_CATEGORIES.map((cat) => (
-                    <div key={cat.name} className="space-y-1">
-                      <span className="text-[10px] font-mono-code uppercase text-[#6b6458] dark:text-[#9e9687]">
-                        {cat.name}
-                      </span>
-                      <div className="flex flex-wrap gap-1">
-                        {cat.items.map((aroma) => {
-                          const isSelected = formData.aromaTags?.includes(aroma);
-                          return (
-                            <button
-                              key={aroma}
-                              type="button"
-                              onClick={() =>
-                                isSelected ? handleRemoveAroma(aroma) : handleAddAroma(aroma)
-                              }
-                              className={`px-2 py-0.5 rounded-full text-[11px] transition-all ${
-                                isSelected
-                                  ? 'bg-[#793b46] text-[#fffaf0] font-medium'
-                                  : 'bg-[#f2ecdf] dark:bg-[#25221d] text-[#312d26] dark:text-[#eee7db] hover:bg-[#eae1cd]'
-                              }`}
-                            >
-                              {aroma}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ABA 4: PALADAR */}
-          {activeTab === 'paladar' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                    Doçura
-                  </label>
-                  <select
-                    value={formData.paladar?.docura || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        paladar: { ...formData.paladar!, docura: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-2 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
-                  >
-                    {SWEETNESS_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                    Acidez
-                  </label>
-                  <select
-                    value={formData.paladar?.acidez || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        paladar: { ...formData.paladar!, acidez: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-2 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
-                  >
-                    {ACIDITY_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                    Taninos
-                  </label>
-                  <select
-                    value={formData.paladar?.tanino || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        paladar: { ...formData.paladar!, tanino: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-2 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
-                  >
-                    {TANNIN_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                    Corpo
-                  </label>
-                  <select
-                    value={formData.paladar?.corpo || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        paladar: { ...formData.paladar!, corpo: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-2 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
-                  >
-                    {BODY_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                    Teor Alcoólico
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.paladar?.alcool || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        paladar: { ...formData.paladar!, alcool: e.target.value },
-                      })
-                    }
-                    placeholder="Ex: 13.5% ou Médio / Alto"
-                    className="w-full px-3 py-2 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                    Persistência
-                  </label>
-                  <select
-                    value={formData.paladar?.persistencia || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        paladar: { ...formData.paladar!, persistencia: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-2 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
-                  >
-                    {PERSISTENCE_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                  Sensações em Boca / Retrogosto
-                </label>
-                <textarea
-                  rows={3}
-                  value={formData.paladar?.aromasBoca || ''}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      paladar: { ...formData.paladar!, aromasBoca: e.target.value },
-                    })
-                  }
-                  placeholder="Sabores na boca, textura, salinidade, final tostado ou frutado..."
-                  className="w-full px-3 py-2 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* ABA 5: CONCLUSÃO */}
-          {activeTab === 'conclusao' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                    Avaliação em Estrelas
-                  </label>
-                  <div className="flex items-center gap-1.5 pt-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() =>
-                          setFormData({
-                            ...formData,
-                            conclusao: {
-                              ...formData.conclusao!,
-                              avaliacaoEstrelas: star,
-                            },
-                          })
-                        }
-                        className="p-1 hover:scale-110 transition-transform"
-                      >
-                        <Star
-                          className={`w-6 h-6 ${
-                            (formData.conclusao?.avaliacaoEstrelas || 0) >= star
-                              ? 'text-amber-500 fill-amber-500'
-                              : 'text-stone-300 dark:text-stone-700'
-                          }`}
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                    Nível de Qualidade
-                  </label>
-                  <select
-                    value={formData.conclusao?.qualidade || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        conclusao: { ...formData.conclusao!, qualidade: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-2 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
-                  >
-                    {QUALITY_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                    Potencial de Guarda
-                  </label>
-                  <select
-                    value={formData.conclusao?.guarda || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        conclusao: { ...formData.conclusao!, guarda: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-2 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
-                  >
-                    {AGING_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                  Harmonização Sugerida
-                </label>
-                <input
-                  type="text"
-                  value={formData.conclusao?.harmonizacao || ''}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      conclusao: { ...formData.conclusao!, harmonizacao: e.target.value },
-                    })
-                  }
-                  placeholder="Ex: Queijo brie com mel, risoto de cogumelos, carnes grelhadas"
-                  className="w-full px-3 py-2 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d]"
-                />
-              </div>
-
-              <div>
-                <label className="flex items-center justify-between text-xs font-semibold text-[#312d26] dark:text-[#eee7db] mb-1">
-                  <span>Impressão Final do Sommelier (Manuscrito do Caderno)</span>
-                  {dictation.supported && (
-                    <button
-                      type="button"
-                      onClick={dictation.toggle}
-                      aria-label="Ditar impressão final"
-                      className={`p-1.5 rounded-xs border transition-colors ${
-                        dictation.listening
-                          ? 'border-[#793b46] bg-[#793b46] text-[#fffaf0]'
-                          : 'border-[#cfc4b0] dark:border-[#3d362b] text-[#6b6458] dark:text-[#9e9687] hover:text-[#793b46]'
-                      }`}
-                    >
-                      {dictation.listening ? (
-                        <MicOff className="w-3.5 h-3.5" />
-                      ) : (
-                        <Mic className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                  )}
-                </label>
-                <textarea
-                  rows={4}
-                  value={formData.conclusao?.impressaoFinal || ''}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      conclusao: { ...formData.conclusao!, impressaoFinal: e.target.value },
-                    })
-                  }
-                  placeholder="Sua memória afetiva, impressão geral do equilíbrio e emoção que o vinho transmitiu..."
-                  className="w-full px-3 py-2 text-sm sm:text-base font-hand rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] text-[#312d26] dark:text-[#eee7db] leading-relaxed"
-                />
-                {dictation.interim && (
-                  <p className="mt-1 text-xs italic text-[#6b6458] dark:text-[#9e9687]">
-                    {dictation.interim}
-                  </p>
-                )}
-                {dictation.error && (
-                  <p className="mt-1 text-xs text-[#793b46] dark:text-[#b05e6e]">{dictation.error}</p>
-                )}
-              </div>
-            </div>
+          {/* Abas 2 a 6: a grade ASI, desenhada pelo registro de campos */}
+          {activeTab !== 'geral' && (
+            <SectionFields
+              section={activeTab}
+              entry={formData}
+              advanced={advanced}
+              onChange={setFormData}
+              renderCustom={renderCustomField}
+            />
           )}
 
           {/* Botões de Navegação Entre Abas e Conclusão */}
@@ -1271,9 +995,7 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
                   variant="secondary"
                   type="button"
                   onClick={() => {
-                    const tabs: TabKey[] = ['geral', 'visual', 'olfato', 'paladar', 'conclusao'];
-                    const currIdx = tabs.indexOf(activeTab);
-                    if (currIdx > 0) setActiveTab(tabs[currIdx - 1]);
+                    if (tabIndex > 0) setActiveTab(tabs[tabIndex - 1].key);
                   }}
                   className="!py-1.5 !px-3 text-xs"
                 >
@@ -1283,15 +1005,11 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              {activeTab !== 'conclusao' ? (
+              {tabIndex < tabs.length - 1 ? (
                 <PaperButton
                   variant="secondary"
                   type="button"
-                  onClick={() => {
-                    const tabs: TabKey[] = ['geral', 'visual', 'olfato', 'paladar', 'conclusao'];
-                    const currIdx = tabs.indexOf(activeTab);
-                    if (currIdx < tabs.length - 1) setActiveTab(tabs[currIdx + 1]);
-                  }}
+                  onClick={() => setActiveTab(tabs[tabIndex + 1].key)}
                   className="!py-1.5 !px-3 text-xs font-semibold"
                 >
                   Próxima Etapa &rarr;
