@@ -170,3 +170,25 @@ test('desmarcar a cor tira também a cor da taça', async ({ page }) => {
   await expect(page).toHaveURL(/#\/ficha\//);
   await expect(page.locator('[title^="Cor: #"]')).toHaveCount(0);
 });
+
+test('no nível essencial, desmarcar um campo avançado não o faz sumir', async ({ page }) => {
+  await page.goto('/#/novo');
+  await page.getByRole('button', { name: 'Mostrar grade completa' }).click();
+  await openTab(page, /Boca/);
+  const acidity = page.getByRole('group', { name: /^Acidez/ });
+  await acidity.getByRole('button', { name: 'Alta · High' }).click();
+  await page.getByRole('button', { name: 'Voltar à ficha essencial' }).click();
+  await acidity.getByRole('button', { name: 'Alta · High' }).click();
+  await expect(acidity).toBeVisible();
+  await expect(acidity.getByRole('button', { name: 'Alta · High' })).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('temperatura fora da faixa avisa e não é guardada', async ({ page }) => {
+  await page.goto('/#/novo');
+  await page.getByRole('button', { name: 'Mostrar grade completa' }).click();
+  await openTab(page, /Serviço/);
+  await page.getByLabel('De', { exact: true }).fill('16');
+  await page.getByLabel('até', { exact: true }).fill('35');
+  await expect(page.getByRole('alert')).toContainText('entre -5 e 30 °C');
+  await expect(page.getByRole('alert')).toContainText('ficou 16 °C');
+});

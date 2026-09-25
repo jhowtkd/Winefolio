@@ -86,6 +86,14 @@ describe('proveniência da leitura de rótulo', () => {
     assert.strictEqual(applyLabelAnalysis(orange, {}).skinContact, true);
   });
 
+  it('estilo e tipo lidos do rótulo seguem as regras do editor', () => {
+    const entry = { ...createEntry('x'), tipo: 'fortificado' as const, estilo: 'tinto' as const, subestilo: 'port-tawny' as const };
+    entry.visual = { ...entry.visual, coreColour: 'ruby', corHex: '#83122D' };
+    const next = applyLabelAnalysis(entry, { estilo: 'branco', tipo: 'tranquilo' });
+    assert.deepStrictEqual([next.visual.coreColour, next.visual.corHex], [null, undefined]);
+    assert.strictEqual(next.subestilo, null);
+  });
+
   it('vinho laranja vira branco com contato com as cascas', () => {
     const next = applyLabelAnalysis(createEntry('x'), { estilo: 'laranja', tipo: 'espumante' });
     assert.deepStrictEqual([next.tipo, next.estilo, next.skinContact], ['espumante', 'branco', true]);

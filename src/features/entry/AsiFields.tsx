@@ -205,6 +205,12 @@ const TemperatureField: React.FC<FieldProps> = ({ field, entry, onChange }) => {
     onChange(setPath(entry, field.path, parseRange(nextMin, nextMax)));
 
   const tooWide = range && range.max - range.min > MAX_TEMPERATURE_RANGE;
+  const outOfRange = [min, max].some((text) => {
+    if (text.trim() === '') return false;
+    const n = Number(text.replace(',', '.'));
+    return !Number.isFinite(n) || n < -5 || n > 30;
+  });
+
 
   return (
     <fieldset>
@@ -246,6 +252,12 @@ const TemperatureField: React.FC<FieldProps> = ({ field, entry, onChange }) => {
         />
         <span className={MUTED}>°C</span>
       </div>
+      {outOfRange && (
+        <p className={`${MUTED} mt-1`} role="alert">
+          Use temperaturas entre -5 e 30 °C. O valor fora dessa faixa não foi guardado
+          {range ? `; ficou ${range.min === range.max ? range.min : `${range.min} a ${range.max}`} °C` : ''}.
+        </p>
+      )}
       {tooWide && (
         <p className={`${MUTED} mt-1`} role="status">
           A ASI pede uma faixa de até {MAX_TEMPERATURE_RANGE} °C, por exemplo 16 a 18 °C.
@@ -282,14 +294,16 @@ interface SectionFieldsProps {
   section: SheetSection;
   entry: WineEntry;
   advanced: boolean;
+  /** Campos que já tiveram valor nesta edição e ficam à vista mesmo limpos. */
+  keep?: ReadonlySet<string>;
   onChange: (next: WineEntry) => void;
   /** Desenho próprio para um campo (cor, aromas, estrelas, ditado). `undefined` usa o padrão. */
   renderCustom?: (field: AsiFieldDef) => React.ReactNode | undefined;
 }
 
 /** Os campos visíveis de uma seção, na ordem da grade, e as notas sem campo. */
-export const SectionFields: React.FC<SectionFieldsProps> = ({ section, entry, advanced, onChange, renderCustom }) => {
-  const fields = visibleFields(entry, section, advanced);
+export const SectionFields: React.FC<SectionFieldsProps> = ({ section, entry, advanced, keep, onChange, renderCustom }) => {
+  const fields = visibleFields(entry, section, advanced, keep);
   const notes = orphanNotes(entry, section);
   return (
     <div className="space-y-5">

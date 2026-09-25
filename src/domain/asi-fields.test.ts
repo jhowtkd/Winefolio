@@ -10,6 +10,8 @@ import {
   setPath,
   visibleFields,
   withStyle,
+  withType,
+  hasAnyContent,
 } from './asi-fields.js';
 import type { WineEntry } from './wine-entry.js';
 
@@ -51,6 +53,14 @@ describe('visibilidade', () => {
   it('campo avançado já preenchido aparece no Iniciante', () => {
     const entry = setPath(createEntry('x'), 'paladar.acidity', 'high');
     assert.ok(paths(entry, 'paladar', false).includes('paladar.acidity'));
+  });
+
+  it('campo que já teve valor nesta edição continua à vista depois de limpo', () => {
+    const entry = createEntry('x');
+    assert.ok(!paths(entry, 'paladar', false).includes('paladar.acidity'));
+    const keep = new Set(['paladar.acidity', 'servico.temperature']);
+    assert.ok(visibleFields(entry, 'paladar', false, keep).some((f) => f.path === 'paladar.acidity'));
+    assert.strictEqual(isSectionVisible(entry, 'servico', false, keep), true);
   });
 
   it('campo com nota anterior à grade aparece no Iniciante', () => {
@@ -140,5 +150,24 @@ describe('withStyle', () => {
     const orange = { ...createEntry('x'), estilo: 'branco' as const, skinContact: true };
     assert.strictEqual(withStyle(orange, 'tinto').skinContact, false);
     assert.strictEqual(withStyle(orange, 'branco').skinContact, true);
+  });
+});
+
+describe('withType', () => {
+  it('tira o subestilo fora de fortificado e a vinificação que o tipo não oferece', () => {
+    const entry = { ...createEntry('x'), tipo: 'espumante' as const, subestilo: 'port-tawny' as const };
+    entry.conclusao = { ...entry.conclusao, vinification: ['traditional', 'lees-contact'] as any };
+    const still = withType(entry, 'tranquilo');
+    assert.strictEqual(still.subestilo, null);
+    assert.deepStrictEqual(still.conclusao.vinification, ['lees-contact']);
+    assert.strictEqual(withType({ ...entry, tipo: 'fortificado' }, 'fortificado').subestilo, 'port-tawny');
+  });
+});
+
+describe('hasAnyContent', () => {
+  it('conta a grade, não só nome e produtor', () => {
+    assert.strictEqual(hasAnyContent(createEntry('x')), false);
+    assert.strictEqual(hasAnyContent({ ...createEntry('x'), aromaTags: ['Morango'] }), true);
+    assert.strictEqual(hasAnyContent(setPath(createEntry('x'), 'paladar.body', 'full')), true);
   });
 });

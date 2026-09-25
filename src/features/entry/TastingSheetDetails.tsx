@@ -235,6 +235,11 @@ export const TastingSheetDetails: React.FC<TastingSheetDetailsProps> = ({
                     {classificationLabel(entry)}
                   </span>
                 )}
+                {orphanNotes(entry, 'geral').map((note) => (
+                  <span key={note.path} className={`text-[10px] italic ${SMALL}`}>
+                    {note.pt} fora da grade ASI: {note.text}
+                  </span>
+                ))}
                 {entry.kind === 'demo' && (
                   <span className="text-[10px] font-mono-code px-2 py-0.5 rounded bg-blue-100 text-blue-900 border border-blue-300 font-bold">
                     DEMO

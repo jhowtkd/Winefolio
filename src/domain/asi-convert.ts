@@ -261,11 +261,12 @@ export function parseAgeing(text: string): Converted<Ageing> | null {
   if (/^(pronto|beber ja|beber agora|consumo imediato|imediato)$/.test(term)) return ok('now');
   const numbers = [...term.matchAll(/\d{1,2}/g)].map((m) => Number(m[0]));
   if (numbers.length === 0 || !/ano/.test(term)) return null;
-  const top = bandFor(Math.max(...numbers));
+  // "10+ anos" não tem teto: conta a partir do número e, fora da banda "15+", guarda o texto.
+  const openEnded = /\+|mais de|acima de/.test(term);
+  const top = bandFor(Math.max(...numbers) + (openEnded ? 1 : 0));
   const bottom = bandFor(Math.max(Math.min(...numbers), 1));
-  // "10+ anos" não tem teto: a faixa perde o sentido, então o texto fica guardado.
-  const openEnded = /\+|mais de|acima de/.test(term) && top !== '15+';
-  return top === bottom && numbers.length <= 2 && !openEnded ? ok(top) : partial(top);
+  if (openEnded) return top === '15+' ? ok(top) : partial(top);
+  return top === bottom && numbers.length <= 2 ? ok(top) : partial(top);
 }
 
 export function asWineType(text: string | null | undefined): WineType | null {
@@ -427,12 +428,5 @@ export function upgradeToV3(raw: Record<string, any>): Record<string, any> {
 /** Uma ficha gravada no formato 2, anterior à grade ASI. */
 export function needsUpgrade(raw: unknown): boolean {
   return Boolean(raw && typeof raw === 'object' && (raw as { schemaVersion?: unknown }).schemaVersion === 2);
-}
-
-/** Tira a nota de um campo quando a pessoa escolhe um valor ASI para ele. */
-export function clearLegacyNote(entry: WineEntry, path: string): WineEntry {
-  if (!entry.legacyNotes?.[path]) return entry;
-  const { [path]: _removed, ...legacyNotes } = entry.legacyNotes;
-  return { ...entry, legacyNotes };
 }
 

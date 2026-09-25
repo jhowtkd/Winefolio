@@ -1,5 +1,6 @@
 import type { WineEntry } from './wine-entry';
 import { asWineStyle, asWineType, convertAlcohol, parseAgeing, parseDecant, parseTemperature } from './asi-convert';
+import { getPath, withStyle, withType } from './asi-fields';
 import { inferCountryCode } from './countries.js';
 
 export interface LabelAnalysis {
@@ -46,8 +47,7 @@ export const AI_FILLED_PATHS = [
 
 /** Valor do campo junto com a nota fora da grade, para comparar antes e depois. */
 function readPath(entry: WineEntry, path: string): string {
-  const value = path.split('.').reduce<any>((current, key) => current?.[key], entry);
-  return JSON.stringify([value ?? '', entry.legacyNotes?.[path] ?? '']);
+  return JSON.stringify([getPath(entry, path) ?? '', entry.legacyNotes?.[path] ?? '']);
 }
 
 const EMPTY = JSON.stringify(['', '']);
@@ -109,28 +109,30 @@ export function applyLabelAnalysis(entry: WineEntry, analysis: LabelAnalysis): W
 
   const abv = entry.paladar.abv.trim() ? entry.paladar.abv : (convertAlcohol(analysis.alcool || '')?.value.abv ?? '');
 
+  // Estilo e tipo passam pelas mesmas regras do editor (cor, subestilo, vinificação).
+  const styled = withStyle(entry, style?.estilo ?? entry.estilo);
+  const classified = withType(styled, asWineType(analysis.tipo) ?? entry.tipo);
+
   const next: WineEntry = {
-    ...entry,
+    ...classified,
     produtor: keep(entry.produtor, analysis.produtor),
     vinho: keep(entry.vinho, analysis.vinho),
     safra: keep(entry.safra, analysis.safra),
     uvas: keep(entry.uvas, analysis.uvas),
     regiaoPais,
-    tipo: asWineType(analysis.tipo) ?? entry.tipo,
-    estilo: style?.estilo ?? entry.estilo,
     // O Gemini só responde tinto, branco ou rosé. "branco" não desfaz o laranja que a
     // pessoa marcou; só um estilo que não é branco tira o contato com as cascas.
-    skinContact: style?.skinContact || (style && style.estilo !== 'branco' ? false : entry.skinContact),
+    skinContact: style?.skinContact || classified.skinContact,
     origin: {
       region: regiaoPais,
       countryCode: inferCountryCode(regiaoPais) ?? entry.origin?.countryCode ?? null,
     },
     aromaTags,
-    visual: { ...entry.visual, corHex: keep(entry.visual.corHex, analysis.corHexSugerida) || undefined },
+    visual: { ...classified.visual, corHex: keep(classified.visual.corHex, analysis.corHexSugerida) || undefined },
     olfato: { ...entry.olfato, aromas },
     paladar: { ...entry.paladar, abv },
     conclusao: {
-      ...entry.conclusao,
+      ...classified.conclusao,
       ageing: fillCoded(entry.conclusao.ageing, 'conclusao.ageing', notes, analysis.potencialGuarda, parseAgeing),
       harmonizacao: keep(entry.conclusao.harmonizacao, analysis.harmonizacaoSugerida),
     },

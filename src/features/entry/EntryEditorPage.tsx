@@ -26,12 +26,16 @@ import {
   WINE_STYLES,
   WINE_TYPES,
 } from '../../domain/asi-vocabulary';
-import { AROMA_GROUPS } from '../../domain/aroma-catalog';
+import { AROMA_GROUPS, aromaGroupOf } from '../../domain/aroma-catalog';
 import {
+  ASI_FIELDS,
+  hasAnyContent,
+  isFilled,
   isSectionVisible,
   setPath,
   SHEET_SECTIONS,
   withStyle,
+  withType,
   type AsiFieldDef,
   type SheetSection,
 } from '../../domain/asi-fields';
@@ -122,7 +126,15 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
   const [showFullGrid, setShowFullGrid] = useState(false);
   const [showAllAromaGroups, setShowAllAromaGroups] = useState(false);
   const advanced = sheetLevel === 'avancado' || showFullGrid;
-  const tabs = SHEET_SECTIONS.filter((section) => isSectionVisible(formData, section.key, advanced));
+  // Campo que teve valor nesta edição continua à vista depois de limpo: no Iniciante,
+  // desmarcar um valor avançado não pode sumir com o campo nem com a aba.
+  const touchedFields = useRef(new Set<string>());
+  for (const field of ASI_FIELDS) {
+    if (isFilled(formData, field.path)) touchedFields.current.add(field.path);
+  }
+  const tabs = SHEET_SECTIONS.filter((section) =>
+    isSectionVisible(formData, section.key, advanced, touchedFields.current)
+  );
   const tabIndex = tabs.findIndex((tab) => tab.key === activeTab);
   const [isSaving, setIsSaving] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -177,7 +189,7 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
 
     const timer = setTimeout(async () => {
       // Salva rascunho apenas se houver algum conteúdo preenchido
-      if (formData.produtor || formData.vinho || formData.uvas || formData.olfato?.aromas) {
+      if (hasAnyContent(formData)) {
         setDraftStatus('Salvando rascunho...');
         try {
           const draft: EntryDraft = {
@@ -473,10 +485,10 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
             className="flex-1 px-3 py-1.5 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] text-[#312d26] dark:text-[#eee7db]"
           />
         </div>
-        {selected.some((aroma) => !AROMA_GROUPS.some((g) => g.descriptors.includes(aroma))) && (
+        {selected.some((aroma) => !aromaGroupOf(aroma)) && (
           <div className="flex flex-wrap gap-1">
             {selected
-              .filter((aroma) => !AROMA_GROUPS.some((g) => g.descriptors.includes(aroma)))
+              .filter((aroma) => !aromaGroupOf(aroma))
               .map((aroma) => (
                 <button
                   key={aroma}
@@ -787,11 +799,7 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
                       value={formData.tipo ?? ''}
                       onChange={(e) => {
                         const tipo = (e.target.value as WineType) || null;
-                        setFormData((prev) => ({
-                          ...prev,
-                          tipo,
-                          subestilo: tipo === 'fortificado' ? prev.subestilo : null,
-                        }));
+                        setFormData((prev) => withType(prev, tipo));
                       }}
                       className="w-full px-3 py-2 text-xs sm:text-sm rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] text-[#312d26] dark:text-[#eee7db]"
                     >
@@ -831,6 +839,7 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
                   section="geral"
                   entry={formData}
                   advanced={advanced}
+                  keep={touchedFields.current}
                   onChange={setFormData}
                 />
 
@@ -982,6 +991,7 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
               section={activeTab}
               entry={formData}
               advanced={advanced}
+              keep={touchedFields.current}
               onChange={setFormData}
               renderCustom={renderCustomField}
             />

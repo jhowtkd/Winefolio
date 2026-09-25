@@ -220,6 +220,9 @@ describe('conversões por campo', () => {
     assert.deepStrictEqual(parseAgeing('Longa guarda (10+ anos)'), { value: '9-12', lossless: false });
     assert.deepStrictEqual(parseAgeing('Mais de 5 anos'), { value: '3-6', lossless: false });
     assert.deepStrictEqual(parseAgeing('20+ anos'), { value: '15+', lossless: true });
+    assert.deepStrictEqual(parseAgeing('15+ anos'), { value: '15+', lossless: true });
+    assert.deepStrictEqual(parseAgeing('Mais de 15 anos'), { value: '15+', lossless: true });
+    assert.deepStrictEqual(parseAgeing('12+ anos'), { value: '12-15', lossless: false });
     assert.strictEqual(parseAgeing('Passado'), null);
   });
 });

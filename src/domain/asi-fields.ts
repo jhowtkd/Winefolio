@@ -3,7 +3,7 @@
  * regra de quando se aplicam. O editor, a ficha de leitura e a regra de
  * visibilidade leem esta lista.
  */
-import type { SheetLevel, WineEntry, WineStyle } from './wine-entry';
+import type { SheetLevel, WineEntry, WineStyle, WineType } from './wine-entry';
 import {
   ACIDITY,
   AGEING,
@@ -279,14 +279,28 @@ export function isFilled(entry: WineEntry, path: string): boolean {
  * Campo preenchido sempre aparece, mesmo fora do nível ou da regra, para nada
  * sumir da ficha. Vazio aparece se faz sentido e cabe no nível.
  */
-export function isFieldVisible(entry: WineEntry, field: AsiFieldDef, advanced: boolean): boolean {
-  if (isFilled(entry, field.path)) return true;
+export function isFieldVisible(
+  entry: WineEntry,
+  field: AsiFieldDef,
+  advanced: boolean,
+  keep?: ReadonlySet<string>
+): boolean {
+  if (isFilled(entry, field.path) || keep?.has(field.path)) return true;
   if (field.applies && !field.applies(entry)) return false;
   return field.tier === 'iniciante' || advanced;
 }
 
-export function visibleFields(entry: WineEntry, section: SheetSection, advanced: boolean): AsiFieldDef[] {
-  return ASI_FIELDS.filter((field) => field.section === section && isFieldVisible(entry, field, advanced));
+/**
+ * `keep`: campos que já tiveram valor nesta edição. Continuam à vista depois de
+ * limpos, para a pessoa poder escolher de novo sem abrir a grade completa.
+ */
+export function visibleFields(
+  entry: WineEntry,
+  section: SheetSection,
+  advanced: boolean,
+  keep?: ReadonlySet<string>
+): AsiFieldDef[] {
+  return ASI_FIELDS.filter((field) => field.section === section && isFieldVisible(entry, field, advanced, keep));
 }
 
 /** Notas sem campo correspondente, mostradas no fim da seção. */
@@ -299,9 +313,14 @@ export function orphanNotes(entry: WineEntry, section: SheetSection): Array<{ pa
 }
 
 /** A seção aparece se algum campo dela aparece ou se guarda alguma nota. */
-export function isSectionVisible(entry: WineEntry, section: SheetSection, advanced: boolean): boolean {
+export function isSectionVisible(
+  entry: WineEntry,
+  section: SheetSection,
+  advanced: boolean,
+  keep?: ReadonlySet<string>
+): boolean {
   if (section === 'geral') return true;
-  return visibleFields(entry, section, advanced).length > 0 || orphanNotes(entry, section).length > 0;
+  return visibleFields(entry, section, advanced, keep).length > 0 || orphanNotes(entry, section).length > 0;
 }
 
 /**
@@ -382,4 +401,26 @@ export function withStyle(entry: WineEntry, estilo: WineStyle | null): WineEntry
     visual = { ...visual, corHex: next.hex };
   }
   return { ...entry, estilo, skinContact: estilo === 'branco' ? entry.skinContact : false, visual };
+}
+
+/**
+ * Troca o tipo. O subestilo só vale para fortificado, e o estilo de vinificação
+ * só guarda os códigos que o novo tipo oferece (o editor não teria como tirá-los).
+ */
+export function withType(entry: WineEntry, tipo: WineType | null): WineEntry {
+  const allowed = new Set(vinificationFor(tipo).map((option) => option.code));
+  return {
+    ...entry,
+    tipo,
+    subestilo: tipo === 'fortificado' ? entry.subestilo : null,
+    conclusao: { ...entry.conclusao, vinification: entry.conclusao.vinification.filter((code) => allowed.has(code)) },
+  };
+}
+
+/** A ficha já tem algo anotado, na identificação ou na grade. */
+export function hasAnyContent(entry: WineEntry): boolean {
+  return (
+    Boolean(entry.produtor || entry.vinho || entry.uvas || entry.regiaoPais) ||
+    ASI_FIELDS.some((field) => isFilled(entry, field.path))
+  );
 }

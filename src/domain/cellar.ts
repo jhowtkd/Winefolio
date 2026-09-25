@@ -7,6 +7,7 @@ export interface CellarBottle {
   safra: string;
   estilo: WineStyle | null;
   tipo: WineType | null;
+  skinContact?: boolean;
   countryCode: string | null;
   region: string;
   corHex?: string;
@@ -66,6 +67,7 @@ export function groupIntoCellar(entries: WineEntry[]): CellarBottle[] {
       safra: latest.safra,
       estilo: latest.estilo,
       tipo: latest.tipo,
+      skinContact: latest.skinContact,
       countryCode: latest.origin?.countryCode ?? null,
       region: latest.origin?.region || latest.regiaoPais,
       corHex: latest.visual?.corHex,
