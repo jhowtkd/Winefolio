@@ -50,7 +50,8 @@ O build de produção é `npm run build`, e o servidor sobe com `npm start`.
 ## Arquitetura
 
 - `src/domain`: regras puras (agrupamento da adega, estatísticas, leitura de rótulo, lembrete de backup). Cada regra tem teste.
-- `src/repositories`: IndexedDB (`winefolio-local`), migração do formato antigo, backup e importação.
+- `src/domain/asi-*.ts`: a ficha segue a grade de degustação da ASI. `asi-vocabulary` tem os termos (PT e EN), `asi-fields` os campos e os níveis Iniciante e Avançado, `asi-convert` a conversão de texto antigo. Especificação em `docs/superpowers/specs/2026-09-25-ficha-asi-design.md`.
+- `src/repositories`: IndexedDB (`winefolio-local`), migrações (versão 1 e grade ASI), backup (formato 3) e importação (formatos 2 e 3).
 - `src/features`: telas (caderno, ficha, editor, adega, estatísticas, passaporte, paladar, ajustes).
 - `src/server`: regras do servidor (limite de uso, validação da foto).
 - `server.ts`: Express. Serve o app e a única rota de API.

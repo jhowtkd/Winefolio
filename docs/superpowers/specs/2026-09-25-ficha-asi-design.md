@@ -1,6 +1,6 @@
 # Ficha de degustação na grade ASI
 
-Data: 2026-09-25. Status: proposta, aguardando revisão.
+Data: 2026-09-25. Status: aprovada e implementada na branch `claude/amazing-pasteur-h7ctv0`. As diferenças entre o plano e o que foi feito estão no fim.
 Referência: "Nomenclatura de Degustação e Classificação de Vinhos — Referência ASI" (Blind Tasting Grid das ASI Sommelier Guidelines 2021/2025).
 
 ## Objetivo
@@ -258,3 +258,12 @@ Os passos 1 a 5 não mudam nada visível e podem ir num PR só. Os passos 6 a 12
 | Fichas antigas perderem nuance (Média+) | A nuance fica em `legacyNotes` e continua visível. Nada é apagado. |
 | Editor ficar mais pesado no celular | Iniciante com 5 campos. A página do editor já carrega sob demanda (`lazy` em `App.tsx`). |
 | Backup v3 aberto em versão antiga do app | Nota da versão. O schema v2 rejeita cada ficha na validação (`safeParse` em `import-decisions.ts`). Conferir no passo 4 se a prévia de importação mostra isso com clareza. |
+
+## Diferenças na implementação
+
+- **Um PR, não dois.** Trocar o formato da ficha quebra o editor na hora, então os passos 1 a 5 não podiam sair sem as telas. Ficou um PR com um commit por camada.
+- **Limpo ou defeituoso, madeira e halo gravam código, não boolean.** `condition: 'clean' | 'faulty'`, `oak: 'perceptible' | 'imperceptible'` e `rimVariation: 'yes' | 'no'`. Assim todo campo de escolha usa o mesmo componente e o "não preenchido" continua sendo `null`.
+- **Decantação com tempo vira aerar.** "1 hora em decanter" e "45 min" viram `aerate`, e o texto fica em `legacyNotes`, porque o tempo se perde. O mesmo vale para a guarda: "5-10 anos" vira `9-12` com o texto guardado.
+- **Editor.** Os campos da grade saem de um registro único (`src/domain/asi-fields.ts`) desenhado por `src/features/entry/AsiFields.tsx`, em vez de um arquivo por seção. A aba Geral continua no editor. O arquivo caiu de 1345 para cerca de 1060 linhas.
+- **Leitura em memória.** Além da migração, `load()` converte em memória qualquer ficha v2 que tenha sobrado, para a tela nunca ler o formato antigo.
+- **Verificação.** O projeto não tem `@types/react` e o `tsconfig` não é `strict`, então `npm run lint` não checa os componentes. As telas foram verificadas pelo build e pelos testes E2E (`e2e/asi-sheet.spec.ts`).
