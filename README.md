@@ -4,10 +4,10 @@ Caderno pessoal de degustação de vinhos. A pessoa registra fichas sensoriais n
 
 ## Rodar localmente
 
-Requer Node 22.
+Requer Node 22 e Bun 1.4 (o `bun.lock` é o lockfile do projeto).
 
 ```bash
-npm ci
+bun install
 cp .env.example .env   # preencha GEMINI_API_KEY se quiser a leitura de rótulo
 npm run dev            # http://localhost:3000
 ```
@@ -33,7 +33,7 @@ npm test           # regras de domínio e do servidor (node:test)
 npm run test:e2e   # Playwright: build de produção + Chromium desktop e Pixel 7
 ```
 
-O CI (`.github/workflows/ci.yml`) roda os três em todo PR. Os testes E2E simulam a rota do Gemini e não precisam de chave.
+O CI (`.github/workflows/ci.yml`) instala com `bun install --frozen-lockfile` e roda os três em todo PR. Depois de mudar dependência, rode `bun install` e faça commit do `bun.lock`. Os testes E2E simulam a rota do Gemini e não precisam de chave.
 
 ## Deploy pelo Google AI Studio
 

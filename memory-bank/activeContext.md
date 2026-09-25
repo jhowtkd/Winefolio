@@ -18,4 +18,4 @@ Em 2026-09-24 as 10 tarefas do plano de lançamento foram implementadas na branc
 
 A ficha passou a seguir a Blind Tasting Grid da ASI (formato 3). O campo sensorial grava código estável; o texto antigo que não tem equivalente fica em `legacyNotes`. A migração roda uma vez (`migration:asi-v3`), e quem já tinha fichas começa no nível Avançado. Especificação em `docs/superpowers/specs/2026-09-25-ficha-asi-design.md`.
 
-Pendência fora deste trabalho: o commit `8b80a08` trocou `package-lock.json` por `bun.lock`, mas o CI ainda roda `npm ci` e vai falhar até uma das duas coisas mudar.
+O projeto usa bun como gerenciador de pacotes (`bun.lock`, formato 2, Bun 1.4). O CI instala com `bun install --frozen-lockfile`; o servidor e os testes continuam no Node 22.
