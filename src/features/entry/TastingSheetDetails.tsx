@@ -38,6 +38,8 @@ interface TastingSheetDetailsProps {
   onDuplicate: (entry: WineEntry) => void;
   onToggleFavorite: (entry: WineEntry) => void;
   onDelete: (id: string, revision: number) => Promise<void>;
+  /** Marca os campos lidos pela IA como conferidos pela pessoa. */
+  onConfirmAiReading?: (entry: WineEntry) => Promise<unknown>;
 }
 
 const AI_FIELD_LABELS: Record<string, string> = {
@@ -138,9 +140,12 @@ export const TastingSheetDetails: React.FC<TastingSheetDetailsProps> = ({
   onDuplicate,
   onToggleFavorite,
   onDelete,
+  onConfirmAiReading,
 }) => {
   const photoUrl = usePhotoUrl(entry.photoId, readPhoto);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [confirmingAi, setConfirmingAi] = React.useState(false);
+  const aiFields = aiSuggestedFields(entry);
 
   const wineTitle = entry.vinho || entry.produtor || 'Vinho Sem Nome';
   const producer = entry.vinho && entry.produtor ? entry.produtor : '';
@@ -498,14 +503,30 @@ export const TastingSheetDetails: React.FC<TastingSheetDetailsProps> = ({
                 </div>
               )}
 
-              {aiSuggestedFields(entry).length > 0 && (
-                <p className="pt-2 text-[10px] text-[#6b6458] dark:text-[#9e9687]">
-                  Sugerido pela IA e não revisado:{' '}
-                  {aiSuggestedFields(entry)
-                    .map((path) => AI_FIELD_LABELS[path] ?? path)
-                    .join(', ')}
-                  .
-                </p>
+              {aiFields.length > 0 && (
+                <div className="pt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <p className="text-[10px] text-[#6b6458] dark:text-[#9e9687]">
+                    Sugerido pela IA e não revisado:{' '}
+                    {aiFields.map((path) => AI_FIELD_LABELS[path] ?? path).join(', ')}.
+                  </p>
+                  {onConfirmAiReading && (
+                    <button
+                      type="button"
+                      className="text-[10px] font-semibold underline underline-offset-2 text-[#793b46] dark:text-[#b05e6e] disabled:opacity-50 print:hidden"
+                      disabled={confirmingAi}
+                      onClick={async () => {
+                        setConfirmingAi(true);
+                        try {
+                          await onConfirmAiReading(entry);
+                        } finally {
+                          setConfirmingAi(false);
+                        }
+                      }}
+                    >
+                      Confirmar leitura do rótulo
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>

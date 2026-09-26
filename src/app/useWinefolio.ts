@@ -18,6 +18,8 @@ export interface WinefolioContextValue {
   navigate: (route: AppRoute) => void;
   commitEntry: (input: CommitEntryInput) => Promise<WineEntry>;
   setFavorite: (id: string, favorite: boolean, expectedRevision: number) => Promise<WineEntry>;
+  /** Confirma os campos lidos pela IA. Devolve null se não deu para gravar. */
+  confirmAiReading: (entry: WineEntry) => Promise<WineEntry | null>;
   removeEntry: (id: string, expectedRevision: number) => Promise<void>;
   saveDraft: (draft: EntryDraft, photo: PhotoChange) => Promise<void>;
   discardDraft: () => Promise<void>;

@@ -35,6 +35,7 @@ const AppContent: React.FC = () => {
     navigate,
     commitEntry,
     setFavorite,
+    confirmAiReading,
     removeEntry,
     saveDraft,
     discardDraft,
@@ -219,6 +220,7 @@ const AppContent: React.FC = () => {
               onEdit={(entry) => navigate({ kind: 'entry', id: entry.id, mode: 'edit' })}
               onDuplicate={(entry) => navigate({ kind: 'new', fromTemplateId: entry.id })}
               onToggleFavorite={(entry) => setFavorite(entry.id, !entry.favorite, entry.revision)}
+              onConfirmAiReading={confirmAiReading}
               onDelete={async (id, rev) => {
                 await removeEntry(id, rev);
                 navigate({ kind: 'journal', tab: 'all' });

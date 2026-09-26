@@ -72,6 +72,15 @@ export function settleAiProvenance(entry: WineEntry, aiSnapshot: WineEntry): Win
   return { ...entry, provenance };
 }
 
+/** A pessoa conferiu a leitura do rótulo: os campos sugeridos passam a valer como dela. */
+export function confirmAiFields(entry: WineEntry): WineEntry {
+  const pending = Object.entries(entry.provenance ?? {}).filter(([, source]) => source === 'ai-unverified');
+  if (pending.length === 0) return entry;
+  const provenance = { ...entry.provenance };
+  for (const [path] of pending) provenance[path] = 'user';
+  return { ...entry, provenance };
+}
+
 export function aiSuggestedFields(entry: WineEntry): string[] {
   return AI_FILLED_PATHS.filter((path) => entry.provenance?.[path] === 'ai-unverified');
 }

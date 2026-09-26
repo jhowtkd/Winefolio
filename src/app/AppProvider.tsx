@@ -218,6 +218,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [repository, showToast, storagePersisted]
   );
 
+  const confirmAiReading = useCallback(
+    async (entry: WineEntry): Promise<WineEntry | null> => {
+      if (!repository) throw new Error('Repositório não inicializado');
+      try {
+        const { confirmAiFields } = await import('../domain/label-fill');
+        const saved = await repository.commitEntry({
+          entry: confirmAiFields(entry),
+          expectedRevision: entry.revision,
+          photo: { kind: 'keep' },
+          clearDraft: false,
+        });
+        setEntries((prev) => prev.map((e) => (e.id === saved.id ? saved : e)));
+        showToast('Leitura do rótulo confirmada.', 'success');
+        return saved;
+      } catch (err: any) {
+        showToast(err?.message || 'Não foi possível confirmar a leitura.', 'error');
+        return null;
+      }
+    },
+    [repository, showToast]
+  );
+
   const updatePreferences = useCallback(
     async (partial: Partial<Preferences>): Promise<void> => {
       if (!repository) throw new Error('Repositório não inicializado');
@@ -420,6 +442,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       navigate,
       commitEntry,
       setFavorite,
+      confirmAiReading,
       removeEntry,
       saveDraft,
       discardDraft,
@@ -447,6 +470,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       navigate,
       commitEntry,
       setFavorite,
+      confirmAiReading,
       removeEntry,
       saveDraft,
       discardDraft,
