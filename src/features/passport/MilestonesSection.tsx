@@ -49,7 +49,7 @@ const MilestoneCard: React.FC<{ state: StampState; demo: boolean; isNew: boolean
     <li>
       <button type="button" className={`milestone-card ${state.earned ? 'earned' : 'locked'}`} onClick={onOpen}>
         <span className="milestone-art">
-          <MilestoneStamp def={state.def} status={state.earned ? 'earned' : 'locked'} />
+          <MilestoneStamp def={state.def} status={state.earned ? 'earned' : 'locked'} detail="card" />
           {isNew && <span className="milestone-new">NOVO</span>}
         </span>
         <span className="milestone-title">{secret ? 'Marco secreto' : state.def.title}</span>

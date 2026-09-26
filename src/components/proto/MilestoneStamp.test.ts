@@ -47,11 +47,38 @@ describe('MilestoneStamp', () => {
     assert.notStrictEqual(masks[0], masks[1]);
   });
 
-  it('a variante compacta não tem grão, desgaste nem microtexto', () => {
-    const svg = render({ def: stamp('uva.malbec.1'), status: 'earned', compact: true });
-    assert.ok(!svg.includes('feTurbulence'));
-    assert.ok(!svg.includes('WINEFOLIO'));
-    assert.ok(svg.includes('Curioso de'));
+  it('a variante compacta não tem grão, desgaste nem microtexto, e mantém valor e nome', () => {
+    for (const [model, def] of byModel) {
+      const svg = render({ def, status: 'earned', detail: 'compact' });
+      assert.ok(!svg.includes('feTurbulence'), model);
+      assert.ok(!svg.includes('WINEFOLIO'), model);
+      assert.ok(svg.includes(`>${faceValue(def)}</text>`), model);
+      assert.strictEqual(svg.includes('stamp-postmark'), false, model);
+    }
+    const malbec = render({ def: stamp('uva.malbec.1'), status: 'earned', detail: 'compact' });
+    assert.ok(malbec.includes('>Malbec</text>'));
+    assert.ok(!malbec.includes('Curioso de'));
+  });
+
+  it('o cartão da grade troca o texto miúdo pelo nome da uva ou região', () => {
+    for (const [model, def] of byModel) {
+      const svg = render({ def, status: 'earned', detail: 'card' });
+      assert.ok(!svg.includes('WINEFOLIO'), model);
+      assert.ok(!svg.includes(def.motto), model);
+      assert.ok(!svg.includes(`>${def.title}<`), model);
+      assert.ok(svg.includes(`>${faceValue(def)}</text>`), model);
+      assert.ok(svg.includes('feTurbulence'), model);
+    }
+    const malbec = render({ def: stamp('uva.malbec.2'), status: 'earned', detail: 'card' });
+    assert.ok(malbec.includes('>Malbec</text>'));
+    assert.ok(!malbec.includes('Explorador'));
+    assert.ok(render({ def: stamp('regiao.douro.1'), status: 'earned', detail: 'card' }).includes('>Douro</text>'));
+  });
+
+  it('o carimbo postal fica onde o modelo manda', () => {
+    const at = (id: string) => render({ def: stamp(id), status: 'earned', postmark: true, earnedAt: '2026-03-12' }).match(/stamp-postmark" transform="rotate\(-12 ([\d.]+) ([\d.]+)\)/)?.slice(1);
+    assert.deepStrictEqual(at('uva.touriga-nacional.1'), ['84', '132']);
+    assert.deepStrictEqual(at('uva.chardonnay.1'), ['162', '132']);
   });
 
   it('carimbo postal mostra a data da conquista', () => {

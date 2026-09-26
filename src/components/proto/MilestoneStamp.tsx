@@ -2,10 +2,10 @@ import React, { useId } from 'react';
 import type { StampDef } from '../../domain/stamps/rules';
 import { faceValue } from '../../domain/stamps/rules';
 import { countryName } from '../../domain/countries';
-import { countryFor, modelFor } from './stamp-art/model-for';
-import { MODELS, type ModelSpec } from './stamp-art/models';
+import { countryFor, modelFor, subjectLabel } from './stamp-art/model-for';
+import { MODELS, type ModelProps, type ModelSpec, type StampDetail } from './stamp-art/models';
 import { INK, PAPER, SERIF, TIER_INK, TONE_INK } from './stamp-art/palette';
-import { ArcText, FitText, TitleLines } from './stamp-art/parts';
+import { ArcText, FitText } from './stamp-art/parts';
 import { HOLE_RADIUS, perforationHoles, type PaperShape } from './stamp-art/perforation';
 import { postmarkDate, seedOf, upper } from './stamp-art/text';
 
@@ -16,8 +16,11 @@ export interface MilestoneStampProps {
   earnedAt?: string | null;
   /** Carimbo postal com a data por cima do selo ganho. */
   postmark?: boolean;
-  /** Abaixo de ~96 px: sem grão, sem desgaste, sem microtexto. */
-  compact?: boolean;
+  /**
+   * `full` no diálogo e no PNG; `card` na grade (sem texto miúdo, nome da uva ou região grande);
+   * `compact` abaixo de ~96 px (chapado, sem grão, desgaste nem microtexto).
+   */
+  detail?: StampDetail;
   size?: number | string;
   className?: string;
 }
@@ -75,18 +78,24 @@ function TextureFilters({ uid, seed }: { uid: string; seed: number }) {
   );
 }
 
-function Postmark({ uid, date, place }: { uid: string; date: string; place: string }) {
+function Postmark({ uid, date, place, at }: { uid: string; date: string; place: string; at: ModelSpec['postmark'] }) {
+  const { cx, cy, r, ink = INK.ink, waves = true } = at;
+  // As ondas saem para o lado com mais espaço no selo.
+  const toRight = cx < 120;
+  const start = toRight ? cx + r - 4 : cx - r - 68;
+  const scale = r / 30;
   return (
-    <g className="stamp-postmark" transform="rotate(-12 156 168)" opacity={0.8}>
-      <g fill="none" stroke={INK.ink}>
-        <circle cx={156} cy={168} r={30} strokeWidth={1.6} />
-        <circle cx={156} cy={168} r={25.5} strokeWidth={0.7} />
-        {[158, 166, 174].map((y) => (
-          <path key={y} d={`M64 ${y}q6-4 12 0t12 0 12 0 12 0 12 0 12 0`} strokeWidth={1.2} />
-        ))}
+    <g className="stamp-postmark" transform={`rotate(-12 ${cx} ${cy})`} opacity={0.8}>
+      <g fill="none" stroke={ink}>
+        <circle cx={cx} cy={cy} r={r} strokeWidth={1.5} />
+        <circle cx={cx} cy={cy} r={r - 4.5} strokeWidth={0.7} />
+        {waves &&
+          [-8, 0, 8].map((dy) => (
+            <path key={dy} d={`M${start} ${cy + dy}q6-4 12 0t12 0 12 0 12 0 12 0 12 0`} strokeWidth={1.1} />
+          ))}
       </g>
-      <ArcText id={`${uid}pm`} cx={156} cy={168} r={20} text={place} size={5.4} fill={INK.ink} spacing={0.8} />
-      <FitText x={156} y={176} text={date} size={8.6} max={40} fill={INK.ink} font="mono" weight={500} />
+      <ArcText id={`${uid}pm`} cx={cx} cy={cy} r={r - 10} text={place} size={5.4 * scale} fill={ink} spacing={0.6} />
+      <FitText x={cx} y={cy + 3} text={date} size={8.6 * scale} max={r * 1.4} fill={ink} font="mono" weight={500} />
     </g>
   );
 }
@@ -122,34 +131,12 @@ function AlbumSlot({ shape }: { shape: PaperShape }) {
   );
 }
 
-/** Variante pequena: forma, cor dominante, valor e título. */
-function CompactArt({ spec, face, title }: { spec: ModelSpec; face: string; title: string }) {
-  const { shape } = spec;
-  const inset: PaperShape =
-    shape.kind === 'circle'
-      ? { kind: 'circle', cx: shape.cx, cy: shape.cy, r: shape.r - 12 }
-      : { kind: 'rect', x: shape.x + 10, y: shape.y + 10, w: shape.w - 20, h: shape.h - 20 };
-  const round = shape.kind === 'circle';
-  return (
-    <>
-      <ShapeEl
-        shape={inset}
-        fill={round ? 'none' : spec.ground}
-        stroke={round ? spec.onGround : 'none'}
-        strokeWidth={round ? 6 : 0}
-      />
-      <FitText x={120} y={128} text={face} size={72} max={150} fill={round ? spec.onGround : spec.onGround} font="mono" weight={500} />
-      <TitleLines x={120} y={168} title={title} maxChars={14} size={18} max={round ? 150 : 150} fill={spec.onGround} weight={600} lineHeight={19} />
-    </>
-  );
-}
-
 export const MilestoneStamp: React.FC<MilestoneStampProps> = ({
   def,
   status,
   earnedAt = null,
   postmark = false,
-  compact = false,
+  detail = 'full',
   size = '100%',
   className,
 }) => {
@@ -161,6 +148,19 @@ export const MilestoneStamp: React.FC<MilestoneStampProps> = ({
   const country = code ? upper(countryName(code)) : '';
   const face = faceValue(def);
   const date = postmarkDate(earnedAt);
+  const compact = detail === 'compact';
+  const props: ModelProps = {
+    def,
+    uid,
+    face,
+    title: def.title,
+    motto: def.motto,
+    country,
+    tone: TONE_INK[def.tone],
+    tierInk: TIER_INK[def.tier],
+    detail: detail as StampDetail,
+    label: subjectLabel(def),
+  };
 
   return (
     <svg
@@ -168,7 +168,7 @@ export const MilestoneStamp: React.FC<MilestoneStampProps> = ({
       viewBox="0 0 240 240"
       width={size}
       height={size}
-      className={['milestone-stamp', compact ? 'is-compact' : '', className].filter(Boolean).join(' ')}
+      className={['milestone-stamp', `is-${detail}`, className].filter(Boolean).join(' ')}
       data-model={secretLocked ? undefined : model}
       data-status={status}
       aria-hidden="true"
@@ -185,26 +185,26 @@ export const MilestoneStamp: React.FC<MilestoneStampProps> = ({
           <g mask={`url(#${uid}perf)`}>
             <ShapeEl shape={spec.shape} fill={PAPER} />
             {compact ? (
-              <CompactArt spec={spec} face={face} title={def.title} />
+              spec.compact(props)
             ) : (
               <>
                 <g className="stamp-ink" filter={`url(#${uid}rough)`}>
-                  {spec.render({
-                    def,
-                    uid,
-                    face,
-                    title: def.title,
-                    motto: def.motto,
-                    country,
-                    tone: TONE_INK[def.tone],
-                    tierInk: TIER_INK[def.tier],
-                  })}
+                  {spec.render(props)}
                 </g>
-                <ShapeEl shape={spec.shape} className="stamp-wear" fill={PAPER} filter={`url(#${uid}wear)`} opacity={spec.wear} />
+                {spec.fade ? <ShapeEl shape={spec.shape} className="stamp-wear" fill={PAPER} opacity={spec.fade} /> : null}
+                <ShapeEl
+                  shape={spec.shape}
+                  className="stamp-wear"
+                  fill={PAPER}
+                  filter={`url(#${uid}wear)`}
+                  opacity={detail === 'card' ? spec.wear * 0.6 : spec.wear}
+                />
                 <ShapeEl shape={spec.shape} className="stamp-grain" filter={`url(#${uid}grain)`} opacity={0.28} />
               </>
             )}
-            {postmark && date && <Postmark uid={uid} date={date} place={country || 'WINEFOLIO'} />}
+            {postmark && date && !compact && (
+              <Postmark uid={uid} date={date} place={country || 'WINEFOLIO'} at={spec.postmark} />
+            )}
           </g>
         </>
       )}

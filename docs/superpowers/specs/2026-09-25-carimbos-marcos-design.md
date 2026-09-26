@@ -398,3 +398,11 @@ No `PassportPage`, uma terceira página do livro: "03 / MARCOS".
 - O modelo de selo por família que a spec não definiu: volume e legados usam o selo redondo, harmonização usa art déco e secretos usam camafeu. Espanha e Alemanha usam traço e chapado.
 - O livro do passaporte ficava com texto claro sobre papel claro no modo escuro. A folha agora fixa a tinta escura dentro do livro.
 - O PNG é rasterizado pelo Chromium com as fontes carregadas; não houve conversão de texto em curvas nem `opentype.js`. Os PNGs não estão no repositório (cerca de 1 MB por marco nos dois tamanhos).
+- O selo tem três níveis de detalhe (`detail`):
+  - `full`: selo completo, no diálogo e no PNG.
+  - `card`: na grade da página. Sai o texto miúdo (microtexto, moto em arco e título, que já aparece embaixo em HTML) e entra o nome da uva ou da região em letra grande, com o valor e a ilustração maiores.
+  - `compact`: abaixo de ~96 px. É chapado e mantém a forma e o elemento de identidade de cada modelo, em vez de um bloco de cor genérico.
+- O carimbo postal tem posição e raio por modelo, sempre sobre a ilustração. No art déco ele usa tinta clara e fica sem ondas, porque elas cruzariam o valor.
+- A paisagem retrô passou de desgaste .9 para .5, com um véu cor de papel (desbotado de sol) no lugar das manchas.
+- Uvas tintas têm o cacho com bagas preenchidas. Cada região tem um emblema de paisagem (rio, montanha, costa, château, cipreste, vulcão, barril, cacto, araucária, sol, vinhedo, bolhas, casa, folha).
+- A folha de contato renderiza tudo numa árvore React só. Com renderizações separadas, os ids de máscara e filtro se repetiam e o navegador aplicava a máscara do primeiro selo a todos.

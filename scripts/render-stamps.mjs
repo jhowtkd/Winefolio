@@ -55,7 +55,7 @@ function pageHtml() {
   return `<!doctype html><html><head><meta charset="utf-8">${fonts}
 <style>html,body{margin:0;background:transparent}#stage{display:inline-block;line-height:0}
 .sheet{background:#fbf5e7;padding:16px;display:flex;flex-wrap:wrap;gap:14px;width:1200px;font:11px 'DM Mono',monospace;color:#312d26}
-.sheet figure{margin:0;text-align:center;width:180px}.sheet h2{width:100%;margin:10px 0 0;font:600 16px Fraunces,serif}</style>
+.sheet figure{margin:0;text-align:center;width:180px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}.sheet h2{width:100%;margin:10px 0 0;font:600 16px Fraunces,serif}</style>
 </head><body><div id="stage"></div></body></html>`;
 }
 
@@ -138,20 +138,30 @@ async function renderSheet(page) {
   const models = new Map();
   for (const def of STAMPS) if (!models.has(modelFor(def))) models.set(modelFor(def), def);
   const secret = STAMPS.find((def) => def.hidden);
-  const figure = (props, caption) => `<figure>${markup({ ...props, size: 180 })}<figcaption>${caption}</figcaption></figure>`;
-  const sections = [...models].map(
-    ([model, def]) =>
-      `<h2>${model}</h2>` +
-      figure({ def, status: 'earned' }, `${def.id} · ganho`) +
-      figure({ def, status: 'earned', postmark: true, earnedAt: '2026-03-12' }, 'com carimbo') +
-      figure({ def: { ...def, tier: 3 }, status: 'earned' }, 'nível 3') +
-      figure({ def, status: 'earned', compact: true }, 'compact') +
+  // Uma árvore React só: cada selo ganha ids próprios de máscara e filtro (useId).
+  // Renderizar cada selo separado repetiria os ids, e o navegador usaria a máscara do primeiro.
+  const figure = (props, caption) =>
+    createElement('figure', { key: `${props.def.id}-${caption}` }, [
+      createElement(MilestoneStamp, { key: 'stamp', size: 180, ...props }),
+      createElement('figcaption', { key: 'caption' }, caption),
+    ]);
+  const children = [];
+  for (const [model, def] of models) {
+    children.push(
+      createElement('h2', { key: `h-${model}` }, model),
+      figure({ def, status: 'earned' }, `${def.id} · ganho`),
+      figure({ def, status: 'earned', postmark: true, earnedAt: '2026-03-12' }, 'com carimbo'),
+      figure({ def: { ...def, tier: 3 }, status: 'earned' }, 'nível 3'),
+      figure({ def, status: 'earned', detail: 'card' }, 'card (grade)'),
+      figure({ def, status: 'earned', detail: 'compact', size: 96 }, 'compact (96 px)'),
       figure({ def, status: 'locked' }, 'bloqueado')
-  );
-  sections.push(`<h2>secreto</h2>` + figure({ def: secret, status: 'locked' }, 'secreto bloqueado'));
-  await page.evaluate((html) => {
-    document.getElementById('stage').innerHTML = `<div class="sheet">${html}</div>`;
-  }, sections.join(''));
+    );
+  }
+  children.push(createElement('h2', { key: 'h-secret' }, 'secreto'), figure({ def: secret, status: 'locked' }, 'secreto bloqueado'));
+  const html = renderToStaticMarkup(createElement('div', { className: 'sheet' }, children));
+  await page.evaluate((markup) => {
+    document.getElementById('stage').innerHTML = markup;
+  }, html);
   await page.evaluate(() => document.fonts.ready);
   mkdirSync('test-results', { recursive: true });
   await page.locator('#stage .sheet').screenshot({ path: 'test-results/stamps-sheet.png' });

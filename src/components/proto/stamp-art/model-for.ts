@@ -61,3 +61,10 @@ export function modelFor(def: StampDef): StampModel {
       return 'redondo';
   }
 }
+
+/** Nome da uva ou da região dos marcos paramétricos. Nos fixos, nenhum. */
+export function subjectLabel(def: StampDef): string | null {
+  if (def.family === 'uva') return grapeById(def.subject ?? '')?.label ?? null;
+  if (def.family === 'regiao') return regionById(def.subject ?? '')?.label ?? null;
+  return null;
+}
