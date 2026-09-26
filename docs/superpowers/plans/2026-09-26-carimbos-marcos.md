@@ -10,6 +10,10 @@
 
 ---
 
+## Estado da execução
+
+Executado em 2026-09-26, uma tarefa por commit, na ordem abaixo. Desvios em relação a este plano estão em "Diferenças na implementação" da spec. O teste de desempenho passou com folga depois de trocar a expressão regular de sinônimos por casamento palavra a palavra.
+
 ## Global Constraints
 
 - Texto de interface em português; identificadores novos em inglês; campos existentes continuam em português.

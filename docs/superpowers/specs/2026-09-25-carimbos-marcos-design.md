@@ -1,6 +1,6 @@
 # Carimbos e marcos do Passaporte
 
-Data: 2026-09-25. Status: aprovada na revisão de 2026-09-26, em implementação na branch `claude/clever-carson-ah3unh`.
+Data: 2026-09-25. Status: aprovada na revisão de 2026-09-26 e implementada na branch `claude/clever-carson-ah3unh`. As diferenças entre a proposta e o que foi feito estão no fim.
 Base: `main` em `7eb9c38`. Plano: `docs/superpowers/plans/2026-09-26-carimbos-marcos.md`.
 
 ## Objetivo
@@ -384,3 +384,17 @@ No `PassportPage`, uma terceira página do livro: "03 / MARCOS".
 - Nenhum carimbo tem pixel de fundo: PNG exportado com canal alfa 0 fora do desenho (o script confere os cantos).
 - `evaluateStamps` com 1000 fichas roda em menos de 50 ms no Node (teste de desempenho simples).
 - O modo demo nunca mostra marco pessoal, e as fichas pessoais nunca mostram marco ilustrativo.
+
+## Diferenças na implementação
+
+- Os títulos de região usam a preposição do nome: "Visitante do Douro", "Amante da Toscana", "Cidadão de Bordeaux". `REGIONS` ganhou `of`.
+- O casamento de sinônimos é palavra a palavra, com o mais longo primeiro e consumindo o trecho, em vez de uma expressão regular com todos os sinônimos. Com mil fichas a avaliação completa ficou em torno de 18 ms no Node.
+- A confiança na leitura de rótulo vale para todo campo de `AI_FILLED_PATHS` que um marco lê (tipo, estilo, safra, produtor, harmonização, temperatura, decantação, guarda), não só uva, região e país. O marco legado "Origem registrada" manteve a regra antiga para ninguém perder marca já exibida.
+- "Grade completa" é `isGridComplete` em `asi-fields.ts`: campos com termo ASI que se aplicam à ficha, sem o toggle de laranja e sem as listas sem regra de aplicação.
+- O aviso de carimbo novo entra no toast de salvamento ("Ficha salva" + "Novo carimbo no passaporte: …"), com a ação "Ver". O id vai para `seenStampIds` no momento do aviso; o selo "NOVO" continua na página até a primeira visita da sessão por um conjunto em memória. Se a pessoa recarregar antes de abrir o passaporte, o "NOVO" daquele carimbo não aparece.
+- Salvar favorito também pode anunciar marco ("Coleção do coração"). Importação e carga dos exemplos não anunciam; os marcos aparecem como "NOVO" na página.
+- A página de marcos mostra os níveis já ganhos de cada uva ou região e o próximo bloqueado.
+- O diálogo usa `ModalDialog`, e os glifos ficam em `stamp-art/glyphs.ts`, porque `<use>` do sprite não funciona no SVG exportado.
+- O modelo de selo por família que a spec não definiu: volume e legados usam o selo redondo, harmonização usa art déco e secretos usam camafeu. Espanha e Alemanha usam traço e chapado.
+- O livro do passaporte ficava com texto claro sobre papel claro no modo escuro. A folha agora fixa a tinta escura dentro do livro.
+- O PNG é rasterizado pelo Chromium com as fontes carregadas; não houve conversão de texto em curvas nem `opentype.js`. Os PNGs não estão no repositório (cerca de 1 MB por marco nos dois tamanhos).

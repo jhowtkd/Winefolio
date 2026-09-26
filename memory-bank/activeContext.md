@@ -19,3 +19,9 @@ Em 2026-09-24 as 10 tarefas do plano de lançamento foram implementadas na branc
 A ficha passou a seguir a Blind Tasting Grid da ASI (formato 3). O campo sensorial grava código estável; o texto antigo que não tem equivalente fica em `legacyNotes`. A migração roda uma vez (`migration:asi-v3`), e quem já tinha fichas começa no nível Avançado. Especificação em `docs/superpowers/specs/2026-09-25-ficha-asi-design.md`.
 
 O projeto usa bun como gerenciador de pacotes (`bun.lock`, formato 2, Bun 1.4). O CI instala com `bun install --frozen-lockfile`; o servidor e os testes continuam no Node 22.
+
+## Carimbos e marcos (2026-09-26)
+
+O Passaporte ganhou marcos por uva, região, país, estilo, crítica, técnica, volume e harmonização, calculados das fichas a cada render (`evaluateStamps`, sem tabela gravada). O único estado gravado é `preferences.seenStampIds`. Apagar a ficha que sustentava um marco tira o marco. Nenhum marco depende de janela de tempo; os dois secretos "no mesmo dia" foram cortados por causa da diretriz 1.4.3 da App Store. Especificação em `docs/superpowers/specs/2026-09-25-carimbos-marcos-design.md`.
+
+O gerador de referência da arte (`selos-rodada-2/gen.py`) não estava no repositório; os 8 modelos foram recriados a partir da descrição da spec e precisam de revisão visual (`npm run render:stamps -- --sheet`).
