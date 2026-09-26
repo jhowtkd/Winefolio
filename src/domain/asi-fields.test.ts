@@ -12,7 +12,10 @@ import {
   withStyle,
   withType,
   hasAnyContent,
+  isGridComplete,
+  getPath,
 } from './asi-fields.js';
+import { coreColoursFor } from './asi-vocabulary.js';
 import type { WineEntry } from './wine-entry.js';
 
 const paths = (entry: WineEntry, section: Parameters<typeof visibleFields>[1], advanced: boolean) =>
@@ -169,5 +172,91 @@ describe('hasAnyContent', () => {
     assert.strictEqual(hasAnyContent(createEntry('x')), false);
     assert.strictEqual(hasAnyContent({ ...createEntry('x'), aromaTags: ['Morango'] }), true);
     assert.strictEqual(hasAnyContent(setPath(createEntry('x'), 'paladar.body', 'full')), true);
+  });
+});
+
+/** Preenche todo campo da grade que se aplica à ficha, com o primeiro valor possível. */
+function fillGrid(base: WineEntry): WineEntry {
+  let entry = base;
+  for (const field of ASI_FIELDS) {
+    if (!field.en || (field.applies && !field.applies(entry))) continue;
+    const first = field.options?.(entry)[0]?.code;
+    const value = {
+      single: first,
+      select: first,
+      multi: first ? [first] : [],
+      toggle: getPath(entry, field.path),
+      text: '13%',
+      longtext: 'framboesa e violeta',
+      temperature: { min: 16, max: 18 },
+      colour: coreColoursFor(entry.estilo)[0]?.code,
+      aromas: ['Framboesa'],
+      stars: 4,
+    }[field.kind];
+    entry = setPath(entry, field.path, value);
+  }
+  return entry;
+}
+
+describe('isGridComplete', () => {
+  const red = { ...createEntry('r'), tipo: 'tranquilo', estilo: 'tinto' } as WineEntry;
+  const white = { ...createEntry('w'), tipo: 'tranquilo', estilo: 'branco' } as WineEntry;
+
+  it('ficha vazia não tem a grade completa', () => {
+    assert.strictEqual(isGridComplete(red), false);
+  });
+
+  it('tinto com todos os campos da grade está completo', () => {
+    assert.strictEqual(isGridComplete(fillGrid(red)), true);
+  });
+
+  it('tinto sem qualidade dos taninos não está completo', () => {
+    assert.strictEqual(isGridComplete({ ...fillGrid(red), paladar: { ...fillGrid(red).paladar, tanninQuality: [] } }), false);
+  });
+
+  it('branco não precisa de taninos nem de contato com cascas', () => {
+    const filled = fillGrid(white);
+    assert.strictEqual(filled.paladar.tanninLevel, null);
+    assert.strictEqual(filled.skinContact, false);
+    assert.strictEqual(isGridComplete(filled), true);
+  });
+
+  it('listas sem regra podem ficar vazias', () => {
+    const filled = fillGrid(red);
+    const bare = {
+      ...filled,
+      visual: { ...filled.visual, observations: [] },
+      paladar: { ...filled.paladar, texture: [] },
+      conclusao: { ...filled.conclusao, vinification: [] },
+      servico: { ...filled.servico, pairingComponents: [] },
+    };
+    assert.strictEqual(isGridComplete(bare), true);
+  });
+
+  it('espumante exige borbulhas e fortificado exige subestilo', () => {
+    const sparkling = fillGrid({ ...white, tipo: 'espumante' });
+    assert.strictEqual(isGridComplete(sparkling), true);
+    assert.strictEqual(isGridComplete({ ...sparkling, paladar: { ...sparkling.paladar, sparkle: null } }), false);
+    const fortified = fillGrid({ ...red, tipo: 'fortificado' });
+    assert.strictEqual(isGridComplete(fortified), true);
+    assert.strictEqual(isGridComplete({ ...fortified, subestilo: null }), false);
+  });
+
+  it('nariz defeituoso exige os defeitos', () => {
+    const filled = fillGrid(red);
+    const faulty = { ...filled, olfato: { ...filled.olfato, condition: 'faulty', faults: [] } } as WineEntry;
+    assert.strictEqual(isGridComplete(faulty), false);
+    assert.strictEqual(isGridComplete({ ...faulty, olfato: { ...faulty.olfato, faults: ['tca'] } } as WineEntry), true);
+  });
+
+  it('nota anterior à ASI conta como preenchida', () => {
+    const filled = fillGrid(red);
+    const noted = { ...filled, paladar: { ...filled.paladar, acidity: null }, legacyNotes: { 'paladar.acidity': 'viva' } };
+    assert.strictEqual(isGridComplete(noted), true);
+  });
+
+  it('quem chama pode recusar um campo', () => {
+    const filled = fillGrid(red);
+    assert.strictEqual(isGridComplete(filled, (entry, path) => path !== 'paladar.abv'), false);
   });
 });

@@ -1,4 +1,5 @@
 import type { WineEntry } from '../wine-entry';
+import { STAMPS } from './catalog';
 import { countryOf, grapesOf, regionsOf } from './normalize';
 import { createRuleMemo, runRule, type Ctx, type StampDef, type StampState } from './rules';
 
@@ -53,4 +54,9 @@ export function evaluate(
       earnedByEntryId: earned ? (crossing?.id ?? null) : null,
     };
   });
+}
+
+/** Todos os marcos do catálogo. */
+export function evaluateStamps(entries: readonly WineEntry[], options: EvaluateOptions = {}): StampState[] {
+  return evaluate(STAMPS, entries, options);
 }

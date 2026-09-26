@@ -4,9 +4,23 @@ import { GRAPES, type Alias, type GrapeId } from './grape-catalog';
 import { REGIONS, type Region, type RegionId } from './region-catalog';
 
 /** Minúsculas, sem acento, pontuação vira espaço. Base de toda comparação de texto livre. */
+const FOLDED = new Map<string, string>();
+
 export function fold(text: string): string {
-  return text
-    .toLowerCase()
+  const cached = FOLDED.get(text);
+  if (cached !== undefined) return cached;
+  // Fichas repetem muito texto (região, uva). O limite evita crescer sem fim.
+  if (FOLDED.size > 5000) FOLDED.clear();
+  const folded = foldUncached(text);
+  FOLDED.set(text, folded);
+  return folded;
+}
+
+function foldUncached(text: string): string {
+  const lower = text.toLowerCase();
+  // Atalho para texto só ASCII: o NFD e as classes Unicode custam caro com mil fichas.
+  if (!/[^\x00-\x7f]/.test(lower)) return lower.replace(/[^a-z0-9]+/g, ' ').trim();
+  return lower
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
@@ -63,23 +77,32 @@ export function aliasTable(items: readonly CatalogItem[]): Map<string, AliasHit[
   return table;
 }
 
-type Matcher = (text: string, entry: WineEntry) => string[];
+/** Recebe texto já dobrado. */
+type Matcher = (folded: string, entry: WineEntry) => string[];
 
 /**
- * Casa sinônimos com limite de palavra, do mais longo para o mais curto, da esquerda para a direita.
+ * Casa sinônimos palavra a palavra, do mais longo para o mais curto, da esquerda para a direita.
  * O trecho casado é consumido: "cabernet sauvignon" não rende também "sauvignon".
  */
 function buildMatcher(items: readonly CatalogItem[]): Matcher {
   const table = aliasTable(items);
-  const alternatives = [...table.keys()].sort((a, b) => b.length - a.length || a.localeCompare(b));
-  const pattern = new RegExp(`(?<![\\p{L}\\p{N}])(?:${alternatives.join('|')})(?![\\p{L}\\p{N}])`, 'gu');
-  return (text, entry) => {
+  const maxWords = Math.max(...[...table.keys()].map((key) => key.split(' ').length));
+  return (folded, entry) => {
     const ids: string[] = [];
-    for (const match of fold(text).matchAll(pattern)) {
-      for (const hit of table.get(match[0]) ?? []) {
-        if (hit.when && !hit.when(entry)) continue;
-        if (!ids.includes(hit.id)) ids.push(hit.id);
+    if (!folded) return ids;
+    const words = folded.split(' ');
+    let start = 0;
+    while (start < words.length) {
+      let consumed = 1;
+      for (let size = Math.min(maxWords, words.length - start); size > 0; size--) {
+        const hits = table.get(words.slice(start, start + size).join(' '));
+        const accepted = hits?.filter((hit) => !hit.when || hit.when(entry)) ?? [];
+        if (accepted.length === 0) continue;
+        for (const hit of accepted) if (!ids.includes(hit.id)) ids.push(hit.id);
+        consumed = size;
+        break;
       }
+      start += consumed;
     }
     return ids;
   };
@@ -124,7 +147,7 @@ export function regionsOf(entry: WineEntry): RegionId[] {
     if (!ids.includes(id)) ids.push(id);
   };
   for (const text of [entry.origin?.region ?? '', entry.regiaoPais ?? '']) {
-    for (const id of matchRegions(text, entry)) {
+    for (const id of matchRegions(fold(text), entry)) {
       add(id);
       let parent = REGION_PARENT.get(id);
       while (parent) {
