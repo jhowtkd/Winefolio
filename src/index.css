@@ -3,6 +3,7 @@
 @import "./styles/paper.css";
 @import "./styles/motion.css";
 @import "./styles/prototype.css" layer(components);
+@import "./styles/stamps.css" layer(components);
 
 @custom-variant dark (&:where(.dark, .dark *));
 

@@ -1,0 +1,19 @@
+/* Carimbos de marco. O SVG não traz sombra; ela vem daqui. */
+.milestone-stamp {
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 1px 1.5px rgb(59 48 18 / 0.18));
+}
+
+.milestone-stamp[data-status='locked'] {
+  filter: none;
+}
+
+/* Texturas desligadas: sem grão, sem desgaste e sem irregularidade no traço. */
+[data-textures='off'] .milestone-stamp :is(.stamp-grain, .stamp-wear) {
+  display: none;
+}
+
+[data-textures='off'] .milestone-stamp .stamp-ink {
+  filter: none;
+}
