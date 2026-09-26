@@ -71,6 +71,17 @@ describe('MilestoneStamp', () => {
   it('todo glifo do catálogo existe', () => {
     for (const def of STAMPS) assert.ok(GLYPHS[def.glyph], `${def.id}: ${def.glyph}`);
   });
+
+  it('uva tinta e branca têm cachos diferentes, e as regiões variam de paisagem', () => {
+    assert.strictEqual(stamp('uva.malbec.1').glyph, 'grape-red');
+    assert.strictEqual(stamp('uva.chardonnay.1').glyph, 'grape');
+    const berry = 'd="M6.4 9.5a2.1 2.1 0 1 0 4.2 0a2.1 2.1 0 1 0 -4.2 0" fill=';
+    assert.ok(render({ def: stamp('uva.merlot.1'), status: 'earned' }).includes(berry));
+    assert.ok(!render({ def: stamp('uva.chardonnay.1'), status: 'earned' }).includes(berry));
+    const regionGlyphs = new Set(STAMPS.filter((def) => def.family === 'regiao').map((def) => def.glyph));
+    assert.ok(regionGlyphs.size >= 8, `só ${regionGlyphs.size} glifos de região`);
+    assert.strictEqual(stamp('regiao.sicilia.1').glyph, 'volcano');
+  });
 });
 
 describe('modelFor', () => {

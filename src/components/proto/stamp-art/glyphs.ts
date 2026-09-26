@@ -1,10 +1,17 @@
-/** Ilustrações provisórias dos selos, em caixa 24×24, só traço. Ficam no SVG do selo (sem `<use>`). */
+/**
+ * Ilustrações provisórias dos selos, em caixa 24×24. Ficam no SVG do selo (sem `<use>`).
+ * Um caminho é traço; `{ d, filled: true }` é preenchido com a mesma tinta.
+ */
+export type GlyphPath = string | { d: string; filled: true };
 
 function circle(cx: number, cy: number, r: number): string {
   return `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0`;
 }
 
-export const GLYPHS: Record<string, readonly string[]> = {
+const filled = (d: string): GlyphPath => ({ d, filled: true });
+const waves = (y: number) => `M2 ${y}c2-1.5 4-1.5 6 0s4 1.5 6 0 4-1.5 6 0 2 .8 2 .8`;
+
+export const GLYPHS: Record<string, readonly GlyphPath[]> = {
   grape: [
     'M12 7V3',
     'M12 5c2-2.5 5-2.6 6.5-1.5-1.8 2.2-4.4 2.6-6.5 1.5',
@@ -14,6 +21,16 @@ export const GLYPHS: Record<string, readonly string[]> = {
     circle(10.5, 13.2, 2.1),
     circle(14.5, 13.2, 2.1),
     circle(12.5, 16.9, 2.1),
+  ],
+  'grape-red': [
+    'M12 7V3',
+    'M12 5c2-2.5 5-2.6 6.5-1.5-1.8 2.2-4.4 2.6-6.5 1.5',
+    filled(circle(8.5, 9.5, 2.1)),
+    filled(circle(12.5, 9.5, 2.1)),
+    filled(circle(16.5, 9.5, 2.1)),
+    filled(circle(10.5, 13.2, 2.1)),
+    filled(circle(14.5, 13.2, 2.1)),
+    filled(circle(12.5, 16.9, 2.1)),
   ],
   milestone: ['M3 20h18', 'M8 20v-8.5a4 4 0 0 1 8 0V20', 'M10.2 13h3.6', 'M10.2 16h3.6', 'M2.5 20c1.8-3 3.4-4.2 5.5-4.4', 'M16 15.6c2.4.2 4 1.6 5.5 4.4'],
   globe: [circle(12, 12, 9), 'M12 3c-2.6 2.4-3.9 5.4-3.9 9s1.3 6.6 3.9 9c2.6-2.4 3.9-5.4 3.9-9S14.6 5.4 12 3', 'M3 12h18', 'M4.8 7.5h14.4', 'M4.8 16.5h14.4'],
@@ -34,8 +51,26 @@ export const GLYPHS: Record<string, readonly string[]> = {
   return: ['M4 4v5h5', 'M4.6 9A8.5 8.5 0 1 1 3.6 14'],
   pencil: ['M4 20l1.1-4.4L16 4.7l3.3 3.3L8.4 18.9Z', 'M14.2 6.5l3.3 3.3'],
   passport: ['M6 3h11a1.2 1.2 0 0 1 1.2 1.2v15.6A1.2 1.2 0 0 1 17 21H6Z', circle(12.1, 10.6, 3.4), 'M8.7 10.6h6.8', 'M9.4 17h5.4'],
+  // Emblemas de região
+  river: ['M3 8.5c3-2 6-2 9 0s6 2 9 0', 'M3 12.5c3-2 6-2 9 0s6 2 9 0', waves(17.5), waves(21)],
+  mountain: ['M2 20 9 7l4 6 3-4 6 11Z', 'M6.9 10.5 9 12l2-1.6', 'M14.6 11l1.4 1 1.3-.9'],
+  coast: [circle(16.5, 6.5, 2.8), waves(12.5), waves(16.5), waves(20.5)],
+  chateau: ['M3 21h18', 'M4.5 21V10l2-2 2 2v11', 'M15.5 21V10l2-2 2 2v11', 'M8.5 21v-7h7v7', 'M8.5 14l3.5-3.5 3.5 3.5', 'M11 21v-3h2v3', 'M6.5 8V5.5', 'M17.5 8V5.5'],
+  cypress: [
+    'M3 21h18',
+    'M9 21v-3',
+    'M9 18c-2.5 0-3-3-3-6s1.8-7 3-9c1.2 2 3 6 3 9s-.5 6-3 6',
+    'M16.5 21v-2',
+    'M16.5 19c-1.8 0-2.2-2.2-2.2-4.4S15.5 9.5 16.5 8c1 1.5 2.2 4.4 2.2 6.6S18.3 19 16.5 19',
+  ],
+  barrel: ['M6 4h12c1.2 2.5 1.8 5.3 1.8 8s-.6 5.5-1.8 8H6c-1.2-2.5-1.8-5.3-1.8-8S4.8 6.5 6 4Z', 'M4.7 8.5h14.6', 'M4.7 15.5h14.6', circle(12, 12, 1.4)],
+  volcano: ['M2 21 8 11h8l6 10Z', 'M8 11c1.3-.8 2.7-.8 4 0s2.7.8 4 0', 'M11 8.5c-1-2 0-4 2-5', 'M14 7.5c1-1.5 3-2 4.5-1.5'],
+  vineyard: [circle(18, 5.5, 2), 'M2 19c4-6 12-8 20-6', 'M5 21l2-4.6', 'M9 21l1.4-6', 'M13 21l.9-6.6', 'M17 21l.4-6.6'],
+  sun: [circle(12, 12, 4), 'M12 3v2', 'M12 19v2', 'M3 12h2', 'M19 12h2', 'M5.6 5.6 7 7', 'M17 17l1.4 1.4', 'M5.6 18.4 7 17', 'M17 7l1.4-1.4'],
+  cactus: ['M6 21h12', 'M10 21V5a2 2 0 0 1 4 0v16', 'M10 12H8a2 2 0 0 1-2-2V8', 'M14 14h2a2 2 0 0 0 2-2V9'],
+  araucaria: ['M9 21h6', 'M12 21V5', 'M5.5 6.5c2-1 4.3-1.5 6.5-1.5s4.5.5 6.5 1.5', 'M4 10.5c2.6-1.2 5.3-1.8 8-1.8s5.4.6 8 1.8', 'M3.5 14.5c2.8-1.1 5.7-1.6 8.5-1.6s5.7.5 8.5 1.6', 'M5.5 6.5V5', 'M18.5 6.5V5', 'M4 10.5V9', 'M20 10.5V9'],
 };
 
-export function glyphPaths(name: string): readonly string[] {
+export function glyphPaths(name: string): readonly GlyphPath[] {
   return GLYPHS[name] ?? GLYPHS.star;
 }

@@ -32,9 +32,9 @@ export const Glyph: React.FC<{
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      {glyphPaths(name).map((d, i) => (
-        <path key={i} d={d} />
-      ))}
+      {glyphPaths(name).map((path, i) =>
+        typeof path === 'string' ? <path key={i} d={path} /> : <path key={i} d={path.d} fill={color} />
+      )}
     </g>
   );
 }
