@@ -30,7 +30,7 @@ const LEGACY_ICONS: Record<string, string> = {
   'legado.origin': 'passport',
 };
 
-/** Passaporte do paladar: carimbos de origem e pequenas conquistas, no padrão do protótipo. */
+/** Passaporte do paladar: carimbos de origem, pequenas conquistas e marcos, no padrão do protótipo. */
 export const PassportPage: React.FC<PassportPageProps> = ({
   entries,
   demoEntries,
@@ -89,7 +89,7 @@ export const PassportPage: React.FC<PassportPageProps> = ({
           <p>
             Um registro de onde vêm as suas memórias.
             <br />
-            Sem metas, sem pressa, sem precisar ir a lugar nenhum.
+            Marcos que contam fichas, sem prazo, sem pressa e sem precisar ir a lugar nenhum.
           </p>
         </div>
         <ModeToggle current={mode} onChange={setMode} />
@@ -142,7 +142,7 @@ export const PassportPage: React.FC<PassportPageProps> = ({
 
           <div className="book-page">
             <div className="mono muted" style={{ fontSize: 8 }}>
-              {demo ? 'AS MARCAS ABAIXO SÃO APENAS EXEMPLOS' : 'CONQUISTAS SEM CONTAGEM DE CONSUMO'}
+              {demo ? 'AS MARCAS ABAIXO SÃO APENAS EXEMPLOS' : 'MARCAS DO SEU JEITO DE ANOTAR'}
             </div>
             <h2>Do seu jeito.</h2>
             <p className="muted">O que vale aqui é observar, registrar e revisitar.</p>
@@ -205,8 +205,8 @@ export const PassportPage: React.FC<PassportPageProps> = ({
           <div>
             <h3>A experiência é sua. O ritmo também.</h3>
             <p>
-              Sem sequências diárias, ranking ou incentivo a beber mais. Relembrar uma página
-              também faz parte.
+              Os marcos contam fichas guardadas, nunca dias seguidos. Sem ranking, sem prazo e sem
+              incentivo a beber mais. Relembrar uma página também faz parte.
             </p>
           </div>
         </div>
@@ -226,7 +226,7 @@ export const PassportPage: React.FC<PassportPageProps> = ({
         <p>
           {demo
             ? 'Este passaporte usa dados fictícios. Selecione “Minhas anotações” para ver apenas o que você registrou.'
-            : 'Carimbo de origem significa que um país está nas suas anotações, não que você o visitou. Os exemplos nunca geram conquistas pessoais.'}
+            : 'Carimbo de origem significa que um país está nas suas anotações, não que você o visitou. Os marcos contam fichas, não garrafas, e os exemplos nunca geram conquistas pessoais.'}
         </p>
       </div>
     </section>

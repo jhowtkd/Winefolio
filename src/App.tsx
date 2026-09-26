@@ -327,7 +327,7 @@ const AppContent: React.FC = () => {
         <footer className="site-footer print:hidden">
           <div className="foot-left">
             <div className="footer-brand">Winefolio.</div>
-            <span>Feito para guardar, não para contar.</span>
+            <span>Feito para guardar, não para competir.</span>
           </div>
           <div className="foot-right">
             <button
