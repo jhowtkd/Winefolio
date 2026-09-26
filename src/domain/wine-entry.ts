@@ -192,6 +192,8 @@ export interface Preferences {
   aiConsentAt: number | null;
   /** Nível da ficha. O Iniciante mostra só cor, aromas, doçura, corpo e nota. */
   sheetLevel: SheetLevel;
+  /** Carimbos de marco que a pessoa já viu ou já recebeu como aviso. Único estado gravado dos marcos. */
+  seenStampIds: string[];
 }
 
 export interface StoreSnapshot {

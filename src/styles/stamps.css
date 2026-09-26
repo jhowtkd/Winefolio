@@ -17,3 +17,197 @@
 [data-textures='off'] .milestone-stamp .stamp-ink {
   filter: none;
 }
+
+/* O livro do passaporte é sempre papel claro. No modo escuro, a tinta do livro continua escura. */
+html.dark .passport-book,
+html.dark .note-horizontal {
+  --ink: #312d26;
+  --muted: #6b6458;
+  --line: #cfc4b0;
+  --wine: #793b46;
+  color: var(--ink);
+}
+
+/* Página 03: uma folha só, sem a lombada do meio. */
+.book-spread.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.book-spread.single::after {
+  display: none;
+}
+
+.milestones-book .book-page {
+  padding-bottom: 48px;
+}
+
+.milestone-tabs {
+  margin: 18px 0 6px;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.milestone-tabs .milestone-count {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.milestone-tabs .filter.has-new::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--wine);
+}
+
+.milestone-grid {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 18px 14px;
+}
+
+.milestone-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 4px 8px;
+  text-align: center;
+}
+
+.milestone-card:hover .milestone-stamp {
+  transform: rotate(-2deg);
+}
+
+.milestone-art {
+  position: relative;
+  width: 100%;
+  max-width: 132px;
+  aspect-ratio: 1;
+}
+
+.milestone-art .milestone-stamp {
+  width: 100%;
+  height: 100%;
+  transition: transform 0.2s var(--ease, ease);
+}
+
+.minimal-motion .milestone-art .milestone-stamp {
+  transition: none;
+}
+
+.milestone-new {
+  position: absolute;
+  top: 2px;
+  right: -2px;
+  font: 600 9px var(--mono);
+  letter-spacing: 1px;
+  color: #fffaf0;
+  background: var(--wine);
+  padding: 3px 6px 2px;
+  transform: rotate(6deg);
+  box-shadow: 0 1px 2px rgb(59 48 18 / 0.25);
+}
+
+.milestone-title {
+  font-family: var(--serif);
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.milestone-card.locked .milestone-title {
+  color: var(--muted);
+}
+
+.milestone-meta {
+  font: 8px var(--mono);
+  letter-spacing: 0.6px;
+  color: var(--wine);
+}
+
+.milestone-card.locked .milestone-meta {
+  color: var(--muted);
+}
+
+.milestone-progress {
+  display: block;
+  width: 72%;
+  height: 3px;
+  background: var(--line);
+}
+
+.milestone-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--wine);
+}
+
+.milestone-empty {
+  margin: 28px 0 12px;
+  font-size: 12px;
+}
+
+.milestone-dialog {
+  display: grid;
+  grid-template-columns: minmax(0, 260px) 1fr;
+  gap: 28px;
+  align-items: center;
+}
+
+.milestone-dialog-art .milestone-stamp {
+  width: 100%;
+  height: auto;
+}
+
+.milestone-dialog-text h2 {
+  font-size: 30px;
+  margin: 6px 0 8px;
+}
+
+.milestone-dialog-text p {
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.milestone-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  color: var(--wine);
+}
+
+@media (max-width: 679px) {
+  .milestone-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 10px;
+  }
+
+  .milestone-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+
+  .milestone-dialog {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .milestone-dialog-art {
+    width: min(220px, 70vw);
+  }
+
+  .milestone-dialog-actions {
+    justify-content: center;
+  }
+}

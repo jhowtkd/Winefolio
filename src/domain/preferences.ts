@@ -9,5 +9,6 @@ export function createPreferences(legacyTheme: string | null): Preferences {
     demoFavorites: {},
     aiConsentAt: null,
     sheetLevel: 'iniciante',
+    seenStampIds: [],
   };
 }

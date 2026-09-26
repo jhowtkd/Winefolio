@@ -38,6 +38,7 @@ export interface WinefolioContextValue {
     options?: {
       action?: { label: string; run: () => void };
       durationMs?: number;
+      detail?: string;
     }
   ) => void;
   activeEntry: WineEntry | null;
@@ -48,6 +49,10 @@ export interface WinefolioContextValue {
   backupDue: boolean;
   storagePersisted: boolean | null;
   snoozeBackupReminder: () => Promise<void>;
+  /** Carimbos anunciados nesta sessão, ainda "novos" no passaporte. */
+  stampHighlights: ReadonlySet<string>;
+  markStampsSeen: (ids: readonly string[]) => Promise<void>;
+  clearStampHighlights: () => void;
 }
 
 export const WinefolioContext = createContext<WinefolioContextValue | null>(null);
