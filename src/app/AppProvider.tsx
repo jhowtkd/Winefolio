@@ -21,6 +21,7 @@ import { motionDataset } from '../domain/motion';
 import { applyDemoFavorites } from '../domain/demo-visibility';
 import { EMPTY_BACKUP_STATUS, isBackupDue, type BackupStatus } from '../domain/backup-reminder';
 import { ensurePersistentStorage, readPersistentStorage } from './storage-persistence';
+import { createPreferencesWriter, type PreferencesChange } from './preferences-writer';
 import { getDemoWines } from '../data/demo-wines';
 import { WinefolioContext, type WinefolioContextValue } from './useWinefolio';
 import { parseHash, formatHash, type AppRoute } from './navigation';
@@ -203,30 +204,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [preferences]);
 
-  /**
-   * Grava preferências a partir do valor mais recente (não do capturado no render), para duas
-   * gravações seguidas não apagarem uma à outra.
-   */
-  const persistPreferences = useCallback(
-    async (partial: Partial<Preferences>): Promise<Preferences> => {
-      if (!repository) throw new Error('Repositório não inicializado');
-      const next: Preferences = { ...preferencesRef.current, ...partial };
-      preferencesRef.current = next;
-      setPreferences(next);
-      await repository.savePreferences(next);
-      return next;
-    },
+  const writePreferences = useMemo(
+    () =>
+      repository
+        ? createPreferencesWriter<Preferences>({
+            read: () => preferencesRef.current,
+            save: (next) => repository.savePreferences(next),
+            publish: (next) => {
+              preferencesRef.current = next;
+              setPreferences(next);
+            },
+          })
+        : null,
     [repository]
+  );
+
+  const persistPreferences = useCallback(
+    async (change: PreferencesChange<Preferences>): Promise<Preferences> => {
+      if (!writePreferences) throw new Error('Repositório não inicializado');
+      return writePreferences(change);
+    },
+    [writePreferences]
   );
 
   /** Carimbos já vistos no passaporte. Silencioso: não é uma preferência que a pessoa mudou. */
   const markStampsSeen = useCallback(
     async (ids: readonly string[]): Promise<void> => {
-      const seen = new Set(preferencesRef.current.seenStampIds ?? []);
-      const fresh = ids.filter((id) => !seen.has(id));
-      if (fresh.length === 0) return;
+      const unseen = (current: Preferences) => {
+        const seen = new Set(current.seenStampIds ?? []);
+        return ids.filter((id) => !seen.has(id));
+      };
+      if (unseen(preferencesRef.current).length === 0) return;
       try {
-        await persistPreferences({ seenStampIds: [...seen, ...fresh] });
+        // Calculado na hora de gravar: outra marcação pode ter entrado na fila antes desta.
+        await persistPreferences((current) => ({
+          seenStampIds: [...(current.seenStampIds ?? []), ...unseen(current)],
+        }));
       } catch (err) {
         console.warn('Não foi possível guardar os carimbos vistos:', err);
       }
