@@ -39,6 +39,11 @@ test('com licença, preenche os dados do rótulo e não a impressão final', asy
   await expect(page).toHaveURL(/#\/ficha\//);
   await expect(page.getByText('Nenhuma anotação final registrada.')).toBeVisible();
   await expect(page.getByText(/Sugerido pela IA e não revisado/)).toBeVisible();
+
+  // Conferida a leitura, os campos passam a valer como da pessoa.
+  await page.getByRole('button', { name: 'Confirmar leitura do rótulo' }).click();
+  await expect(page.getByText('Leitura do rótulo confirmada.')).toBeVisible();
+  await expect(page.getByText(/Sugerido pela IA e não revisado/)).toHaveCount(0);
 });
 
 test('erro do servidor em HTML vira aviso e o editor continua aberto', async ({ page }) => {

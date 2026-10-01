@@ -21,6 +21,7 @@ import { motionDataset } from '../domain/motion';
 import { applyDemoFavorites } from '../domain/demo-visibility';
 import { EMPTY_BACKUP_STATUS, isBackupDue, type BackupStatus } from '../domain/backup-reminder';
 import { ensurePersistentStorage, readPersistentStorage } from './storage-persistence';
+import { createPreferencesWriter, type PreferencesChange } from './preferences-writer';
 import { getDemoWines } from '../data/demo-wines';
 import { WinefolioContext, type WinefolioContextValue } from './useWinefolio';
 import { parseHash, formatHash, type AppRoute } from './navigation';
@@ -31,6 +32,8 @@ type ToastType = 'info' | 'success' | 'warn' | 'error';
 export interface ToastOptions {
   action?: { label: string; run: () => void };
   durationMs?: number;
+  /** Linha menor abaixo da mensagem. */
+  detail?: string;
 }
 
 // Só aparece quando o banco falha ao abrir.
@@ -46,6 +49,16 @@ interface ToastState {
   message: string;
   type: ToastType;
   action?: ToastOptions['action'];
+  detail?: string;
+}
+
+/** Lista com a ficha gravada no lugar da anterior, ou no topo se for nova. */
+function replaceEntry(list: WineEntry[], saved: WineEntry): WineEntry[] {
+  const idx = list.findIndex((e) => e.id === saved.id);
+  if (idx < 0) return [saved, ...list];
+  const next = [...list];
+  next[idx] = saved;
+  return next;
 }
 
 /** Tempo para desfazer uma exclusão antes de ela ir para o IndexedDB. */
@@ -73,12 +86,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [backupStatus, setBackupStatus] = useState<BackupStatus>(EMPTY_BACKUP_STATUS);
   const [storagePersisted, setStoragePersisted] = useState<boolean | null>(null);
   const persistRequested = useRef(false);
+  // Carimbos anunciados nesta sessão: continuam "novos" no passaporte até a pessoa abrir a página.
+  const [stampHighlights, setStampHighlights] = useState<ReadonlySet<string>>(() => new Set());
+  const preferencesRef = useRef(preferences);
+  preferencesRef.current = preferences;
+  const entriesRef = useRef(entries);
+  entriesRef.current = entries;
 
   const toastSeq = useRef(0);
   const showToast = useCallback(
     (message: string, type: ToastType = 'info', options: ToastOptions = {}) => {
       const id = ++toastSeq.current;
-      setToast({ id, message, type, action: options.action });
+      setToast({ id, message, type, action: options.action, detail: options.detail });
       setTimeout(() => {
         setToast((curr) => (curr && curr.id === id ? null : curr));
       }, options.durationMs ?? 4000);
@@ -185,21 +204,86 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [preferences]);
 
+  const writePreferences = useMemo(
+    () =>
+      repository
+        ? createPreferencesWriter<Preferences>({
+            read: () => preferencesRef.current,
+            save: (next) => repository.savePreferences(next),
+            publish: (next) => {
+              preferencesRef.current = next;
+              setPreferences(next);
+            },
+          })
+        : null,
+    [repository]
+  );
+
+  const persistPreferences = useCallback(
+    async (change: PreferencesChange<Preferences>): Promise<Preferences> => {
+      if (!writePreferences) throw new Error('Repositório não inicializado');
+      return writePreferences(change);
+    },
+    [writePreferences]
+  );
+
+  /** Carimbos já vistos no passaporte. Silencioso: não é uma preferência que a pessoa mudou. */
+  const markStampsSeen = useCallback(
+    async (ids: readonly string[]): Promise<void> => {
+      const unseen = (current: Preferences) => {
+        const seen = new Set(current.seenStampIds ?? []);
+        return ids.filter((id) => !seen.has(id));
+      };
+      if (unseen(preferencesRef.current).length === 0) return;
+      try {
+        // Calculado na hora de gravar: outra marcação pode ter entrado na fila antes desta.
+        await persistPreferences((current) => ({
+          seenStampIds: [...(current.seenStampIds ?? []), ...unseen(current)],
+        }));
+      } catch (err) {
+        console.warn('Não foi possível guardar os carimbos vistos:', err);
+      }
+    },
+    [persistPreferences]
+  );
+
+  const clearStampHighlights = useCallback(() => {
+    setStampHighlights((prev) => (prev.size ? new Set() : prev));
+  }, []);
+
+  /**
+   * Compara os marcos antes e depois de gravar. O que acabou de ser ganho entra no aviso de
+   * salvamento, uma vez só: o id vai para `seenStampIds` na hora. Erro aqui nunca afeta a ficha.
+   */
+  const announceStamps = useCallback(
+    async (before: WineEntry[], after: WineEntry[], message: string): Promise<void> => {
+      try {
+        const { evaluateStamps, newlyEarned, stampNotice } = await import('../domain/stamps');
+        const fresh = newlyEarned(evaluateStamps(before), evaluateStamps(after), preferencesRef.current.seenStampIds ?? []);
+        if (fresh.length === 0) return;
+        const ids = fresh.map((def) => def.id);
+        setStampHighlights((prev) => new Set([...prev, ...ids]));
+        showToast(message, 'success', {
+          detail: stampNotice(fresh) ?? undefined,
+          durationMs: 8000,
+          action: { label: 'Ver', run: () => navigate({ kind: 'passport' }) },
+        });
+        await markStampsSeen(ids);
+      } catch (err) {
+        console.warn('Não foi possível calcular os carimbos:', err);
+      }
+    },
+    [markStampsSeen, navigate, showToast]
+  );
+
   // Operações de Ficha
   const commitEntry = useCallback(
     async (input: CommitEntryInput): Promise<WineEntry> => {
       if (!repository) throw new Error('Repositório não inicializado');
       const saved = await repository.commitEntry(input);
+      const before = entriesRef.current;
 
-      setEntries((prev) => {
-        const idx = prev.findIndex((e) => e.id === saved.id);
-        if (idx >= 0) {
-          const next = [...prev];
-          next[idx] = saved;
-          return next;
-        }
-        return [saved, ...prev];
-      });
+      setEntries((prev) => replaceEntry(prev, saved));
 
       if (input.clearDraft) {
         setDraft(null);
@@ -212,43 +296,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         void ensurePersistentStorage().then(setStoragePersisted);
       }
 
-      showToast(`Ficha de "${saved.vinho || saved.produtor || 'Vinho'}" salva com sucesso!`, 'success');
+      const message = `Ficha de "${saved.vinho || saved.produtor || 'Vinho'}" salva com sucesso!`;
+      showToast(message, 'success');
+      void announceStamps(before, replaceEntry(before, saved), message);
       return saved;
     },
-    [repository, showToast, storagePersisted]
+    [repository, showToast, storagePersisted, announceStamps]
+  );
+
+  const confirmAiReading = useCallback(
+    async (entry: WineEntry): Promise<WineEntry | null> => {
+      if (!repository) throw new Error('Repositório não inicializado');
+      try {
+        const { confirmAiFields } = await import('../domain/label-fill');
+        const saved = await repository.commitEntry({
+          entry: confirmAiFields(entry),
+          expectedRevision: entry.revision,
+          photo: { kind: 'keep' },
+          clearDraft: false,
+        });
+        const before = entriesRef.current;
+        setEntries((prev) => replaceEntry(prev, saved));
+        showToast('Leitura do rótulo confirmada.', 'success');
+        void announceStamps(before, replaceEntry(before, saved), 'Leitura do rótulo confirmada.');
+        return saved;
+      } catch (err: any) {
+        showToast(err?.message || 'Não foi possível confirmar a leitura.', 'error');
+        return null;
+      }
+    },
+    [repository, showToast, announceStamps]
   );
 
   const updatePreferences = useCallback(
     async (partial: Partial<Preferences>): Promise<void> => {
-      if (!repository) throw new Error('Repositório não inicializado');
-      const next: Preferences = { ...preferences, ...partial };
-      await repository.savePreferences(next);
-      setPreferences(next);
+      await persistPreferences(partial);
       showToast('Preferências salvas.', 'success');
     },
-    [repository, preferences, showToast]
+    [persistPreferences, showToast]
   );
 
   const setFavorite = useCallback(
     async (id: string, favorite: boolean, expectedRevision: number): Promise<WineEntry> => {
       if (!repository) throw new Error('Repositório não inicializado');
       const updated = await repository.setFavorite(id, favorite, expectedRevision);
+      const before = entriesRef.current;
       setEntries((prev) => prev.map((e) => (e.id === id ? updated : e)));
       if (updated.kind === 'demo') {
         await updatePreferences({
           demoFavorites: { ...preferences.demoFavorites, [id]: favorite },
         });
       }
-      showToast(favorite ? 'Vinho marcado como favorito!' : 'Vinho desmarcado dos favoritos.', 'info');
+      const message = favorite ? 'Vinho marcado como favorito!' : 'Vinho desmarcado dos favoritos.';
+      showToast(message, 'info');
+      if (favorite) void announceStamps(before, replaceEntry(before, updated), message);
       return updated;
     },
-    [repository, showToast, preferences.demoFavorites, updatePreferences]
+    [repository, showToast, preferences.demoFavorites, updatePreferences, announceStamps]
   );
 
   // Exclusão com desfazer: a ficha some da tela na hora e só sai do IndexedDB
   // depois de UNDO_DELETE_MS, numa nova exclusão ou quando a aba é escondida.
-  const entriesRef = useRef(entries);
-  entriesRef.current = entries;
   const pendingDeletion = useRef<{ entry: WineEntry; timer: ReturnType<typeof setTimeout> } | null>(null);
 
   const flushPendingDeletion = useCallback(async (): Promise<void> => {
@@ -420,6 +528,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       navigate,
       commitEntry,
       setFavorite,
+      confirmAiReading,
       removeEntry,
       saveDraft,
       discardDraft,
@@ -438,6 +547,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       backupDue,
       storagePersisted,
       snoozeBackupReminder,
+      stampHighlights,
+      markStampsSeen,
+      clearStampHighlights,
     }),
     [
       entries,
@@ -447,6 +559,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       navigate,
       commitEntry,
       setFavorite,
+      confirmAiReading,
       removeEntry,
       saveDraft,
       discardDraft,
@@ -465,6 +578,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       backupDue,
       storagePersisted,
       snoozeBackupReminder,
+      stampHighlights,
+      markStampsSeen,
+      clearStampHighlights,
     ]
   );
 
@@ -486,6 +602,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           <Icon name={toast.type === 'success' ? 'check' : 'info'} />
           <div>
             <strong>{toast.message}</strong>
+            {toast.detail && <small>{toast.detail}</small>}
           </div>
           {toast.action && (
             <button type="button" className="toast-action" onClick={toast.action.run}>

@@ -276,6 +276,23 @@ export function isFilled(entry: WineEntry, path: string): boolean {
 }
 
 /**
+ * Campos que a grade completa exige: os que têm termo ASI. Ficam de fora o toggle (desligado é
+ * resposta, não campo vazio) e as listas sem regra de aplicação (observações, textura, vinificação e
+ * componentes podem não ter nada a anotar). Lista com regra, como defeitos, vale quando se aplica.
+ */
+const GRID_FIELDS = ASI_FIELDS.filter(
+  (field) => field.en !== undefined && field.kind !== 'toggle' && !(field.kind === 'multi' && !field.applies)
+);
+
+/** Ficha com toda a grade ASI aplicável preenchida. `filled` deixa quem chama recusar campos. */
+export function isGridComplete(
+  entry: WineEntry,
+  filled: (entry: WineEntry, path: string) => boolean = isFilled
+): boolean {
+  return GRID_FIELDS.every((field) => (field.applies && !field.applies(entry)) || filled(entry, field.path));
+}
+
+/**
  * Campo preenchido sempre aparece, mesmo fora do nível ou da regra, para nada
  * sumir da ficha. Vazio aparece se faz sentido e cabe no nível.
  */

@@ -30,3 +30,17 @@ Feito, conforme `docs/superpowers/plans/2026-09-24-launch-readiness.md`:
 
 Fora desta leva: estoque real de garrafas, service worker offline, fontes servidas pelo próprio app.
 
+
+## Carimbos e marcos do Passaporte (2026-09-26)
+
+Feito, conforme `docs/superpowers/plans/2026-09-26-carimbos-marcos.md`:
+- 233 marcos calculados das fichas por função pura (`src/domain/stamps/`): 72 de uva, 93 de região, 64 fixos e os 4 legados
+- Catálogos de uvas e regiões com sinônimos; uva, região e país lidos pela IA só contam depois de confirmados
+- Botão "Confirmar leitura do rótulo" na ficha
+- `evidence.revisitedAt` passa a ser gravado ao salvar uma ficha existente com mudança ("Memória revisitada" deixou de ser impossível)
+- Selos em SVG com 8 modelos, carimbo postal, vaga de álbum e variante compacta (`MilestoneStamp`)
+- Página "03 / MARCOS" no Passaporte, aviso de carimbo novo no toast de salvar e selo "NOVO" até a pessoa abrir o passaporte
+- Textos que prometiam "sem metas" e "não da quantidade de vinho" reescritos
+- `npm run render:stamps` gera PNGs transparentes sob demanda
+
+Fora desta leva: arte final das ilustrações (as atuais são provisórias), PNGs no repositório, compartilhar carimbo.

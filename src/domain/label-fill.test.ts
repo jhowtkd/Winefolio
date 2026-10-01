@@ -1,7 +1,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { createEntry } from './wine-factory.js';
-import { applyLabelAnalysis, settleAiProvenance, aiSuggestedFields } from './label-fill.js';
+import { applyLabelAnalysis, settleAiProvenance, aiSuggestedFields, confirmAiFields } from './label-fill.js';
+import { withRevisit } from './revisit.js';
 
 describe('applyLabelAnalysis', () => {
   it('preenche campos vazios e não apaga o que a pessoa já escreveu', () => {
@@ -106,5 +107,23 @@ describe('proveniência da leitura de rótulo', () => {
     assert.strictEqual(settled.provenance.vinho, 'user');
     assert.strictEqual(settled.provenance.safra, 'ai-unverified');
     assert.deepStrictEqual(aiSuggestedFields(settled), ['safra']);
+  });
+});
+
+describe('confirmAiFields', () => {
+  it('passa todo campo sugerido para a pessoa', () => {
+    const read = applyLabelAnalysis(createEntry('c'), { uvas: 'Chardonnay', regiaoPais: 'Mendoza, Argentina', safra: '2021' });
+    assert.ok(aiSuggestedFields(read).length > 0);
+    const confirmed = confirmAiFields(read);
+    assert.deepStrictEqual(aiSuggestedFields(confirmed), []);
+    assert.strictEqual(confirmed.provenance.uvas, 'user');
+    assert.strictEqual(confirmed.uvas, read.uvas);
+  });
+
+  it('não mexe em ficha sem sugestão nem conta como revisita', () => {
+    const plain = createEntry('p');
+    assert.strictEqual(confirmAiFields(plain), plain);
+    const read = { ...applyLabelAnalysis(createEntry('c'), { uvas: 'Merlot' }), revision: 1 };
+    assert.strictEqual(withRevisit(read, confirmAiFields(read), 1).evidence.revisitedAt, null);
   });
 });

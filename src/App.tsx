@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo } from 'react';
 import { AppProvider } from './app/AppProvider';
 import { useWinefolio } from './app/useWinefolio';
 import { Header } from './components/layout/Header';
@@ -35,6 +35,7 @@ const AppContent: React.FC = () => {
     navigate,
     commitEntry,
     setFavorite,
+    confirmAiReading,
     removeEntry,
     saveDraft,
     discardDraft,
@@ -51,7 +52,14 @@ const AppContent: React.FC = () => {
     backupDue,
     storagePersisted,
     snoozeBackupReminder,
+    stampHighlights,
+    markStampsSeen,
+    clearStampHighlights,
   } = useWinefolio();
+
+  // Memorizadas: o Passaporte recalcula os 233 marcos quando estas listas mudam.
+  const ownEntries = useMemo(() => entries.filter((e) => !e._demo), [entries]);
+  const demoEntries = useMemo(() => getDemoWines(), []);
 
   // Pré-carrega o editor e a ficha com o navegador ocioso. "Registrar vinho" abre sem
   // espera, e salvar não deixa a tela vazia enquanto a ficha carrega.
@@ -59,6 +67,8 @@ const AppContent: React.FC = () => {
     const preload = () => {
       void loadEditor();
       void loadSheet();
+      // O aviso de carimbo novo ao salvar usa o catálogo de marcos.
+      void import('./domain/stamps');
     };
     if ('requestIdleCallback' in window) {
       const id = window.requestIdleCallback(preload);
@@ -95,8 +105,6 @@ const AppContent: React.FC = () => {
 
   const showDemo = preferences.showDemo !== false;
   const shown = visibleEntries(entries, showDemo);
-  const ownEntries = entries.filter((e) => !e._demo);
-  const demoEntries = getDemoWines();
 
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
@@ -174,6 +182,13 @@ const AppContent: React.FC = () => {
               onOpenCountry={(code) =>
                 navigate({ kind: 'journal', tab: 'all', country: code })
               }
+              seenStampIds={preferences.seenStampIds ?? []}
+              highlights={stampHighlights}
+              onStampsSeen={(ids) => {
+                void markStampsSeen(ids);
+                clearStampHighlights();
+              }}
+              onOpenEntry={(id) => navigate({ kind: 'entry', id, mode: 'view' })}
             />
           </Suspense>
         )}
@@ -219,6 +234,7 @@ const AppContent: React.FC = () => {
               onEdit={(entry) => navigate({ kind: 'entry', id: entry.id, mode: 'edit' })}
               onDuplicate={(entry) => navigate({ kind: 'new', fromTemplateId: entry.id })}
               onToggleFavorite={(entry) => setFavorite(entry.id, !entry.favorite, entry.revision)}
+              onConfirmAiReading={confirmAiReading}
               onDelete={async (id, rev) => {
                 await removeEntry(id, rev);
                 navigate({ kind: 'journal', tab: 'all' });
@@ -311,7 +327,7 @@ const AppContent: React.FC = () => {
         <footer className="site-footer print:hidden">
           <div className="foot-left">
             <div className="footer-brand">Winefolio.</div>
-            <span>Feito para guardar, não para contar.</span>
+            <span>Feito para guardar, não para competir.</span>
           </div>
           <div className="foot-right">
             <button

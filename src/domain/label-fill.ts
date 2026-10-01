@@ -72,6 +72,15 @@ export function settleAiProvenance(entry: WineEntry, aiSnapshot: WineEntry): Win
   return { ...entry, provenance };
 }
 
+/** A pessoa conferiu a leitura do rótulo: os campos sugeridos passam a valer como dela. */
+export function confirmAiFields(entry: WineEntry): WineEntry {
+  const pending = Object.entries(entry.provenance ?? {}).filter(([, source]) => source === 'ai-unverified');
+  if (pending.length === 0) return entry;
+  const provenance = { ...entry.provenance };
+  for (const [path] of pending) provenance[path] = 'user';
+  return { ...entry, provenance };
+}
+
 export function aiSuggestedFields(entry: WineEntry): string[] {
   return AI_FILLED_PATHS.filter((path) => entry.provenance?.[path] === 'ai-unverified');
 }
@@ -94,16 +103,18 @@ function fillCoded<T>(
   return converted ? converted.value : null;
 }
 
+/** Tags que a leitura de rótulo tira do texto de aromas. */
+export function aromaTagsFromText(aromas: string): string[] {
+  return aromas
+    .split(/[,;/]/)
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
 export function applyLabelAnalysis(entry: WineEntry, analysis: LabelAnalysis): WineEntry {
   const regiaoPais = keep(entry.regiaoPais, analysis.regiaoPais);
   const aromas = keep(entry.olfato.aromas, analysis.aromasSugeridos);
-  const aromaTags =
-    entry.aromaTags.length > 0
-      ? entry.aromaTags
-      : aromas
-          .split(/[,;/]/)
-          .map((tag) => tag.trim())
-          .filter(Boolean);
+  const aromaTags = entry.aromaTags.length > 0 ? entry.aromaTags : aromaTagsFromText(aromas);
   const style = asWineStyle(analysis.estilo);
   const notes = { ...entry.legacyNotes };
 

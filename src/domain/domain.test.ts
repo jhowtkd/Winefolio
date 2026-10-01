@@ -31,5 +31,6 @@ describe('WineEntry v2 Domain Tests', () => {
     assert.strictEqual(createPreferences('dark').theme, 'night');
     assert.strictEqual(createPreferences(null).theme, 'paper');
     assert.strictEqual(createPreferences('light').theme, 'paper');
+    assert.deepStrictEqual(createPreferences(null).seenStampIds, []);
   });
 });

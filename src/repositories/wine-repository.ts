@@ -11,6 +11,7 @@ import type {
 import { createPreferences } from '../domain/preferences';
 import { needsUpgrade, upgradeToV3 } from '../domain/asi-convert';
 import { EMPTY_BACKUP_STATUS, type BackupStatus } from '../domain/backup-reminder';
+import { withRevisit } from '../domain/revisit';
 
 export class StorageUnavailableError extends Error {
   code = 'STORAGE_UNAVAILABLE';
@@ -129,7 +130,7 @@ export function createWineRepository(db: IDBPDatabase<WineDb>): WineRepository {
         }
 
         const savedEntry: WineEntry = {
-          ...input.entry,
+          ...withRevisit(current, input.entry, now),
           revision: nextRevision,
           photoId: finalPhotoId,
           atualizadoEm: now,

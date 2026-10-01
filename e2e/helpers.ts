@@ -10,13 +10,14 @@ export async function pickLabelPhoto(page: Page) {
 }
 
 /** Registra uma ficha pelo editor. Com foto, recusa o envio ao Gemini. */
-export async function createEntry(page: Page, name: string, options: { photo?: boolean } = {}) {
+export async function createEntry(page: Page, name: string, options: { photo?: boolean; grapes?: string } = {}) {
   await page.goto('/#/novo');
   if (options.photo) {
     await pickLabelPhoto(page);
     await page.getByRole('button', { name: 'Só guardar a foto' }).click();
   }
   await page.getByPlaceholder('Ex: Malbec Argentino, Don Melchor').fill(name);
+  if (options.grapes) await page.getByPlaceholder('Ex: Cabernet Sauvignon (70%), Malbec (30%)').fill(options.grapes);
   await page.getByRole('button', { name: /Guardar no caderno/ }).click();
   await expect(page).toHaveURL(/#\/ficha\//);
 }

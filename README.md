@@ -47,6 +47,15 @@ O AI Studio publica o app no Cloud Run. Antes de cada deploy:
 
 O build de produção é `npm run build`, e o servidor sobe com `npm start`.
 
+### Carimbos do passaporte em PNG
+
+```bash
+npm run render:stamps -- --ids uva.malbec.1,volume.100 --sizes 512,1024
+npm run render:stamps -- --sheet   # folha de contato em test-results/stamps-sheet.png
+```
+
+O script renderiza os selos no Chromium do Playwright com fundo transparente, confere o canal alfa dos cantos e grava `public/stamps/{id}.png` e `public/stamps/manifest.json`. O botão "Baixar PNG" do passaporte só aparece para os ids do manifesto. Sem acesso ao Google Fonts, aponte `STAMP_FONTS_DIR` para uma pasta com os `.woff2` de Fraunces, DM Mono e Caveat (nomes como `Fraunces-400-700.woff2`, `DMMono-500.woff2`).
+
 ## Arquitetura
 
 - `src/domain`: regras puras (agrupamento da adega, estatísticas, leitura de rótulo, lembrete de backup). Cada regra tem teste.

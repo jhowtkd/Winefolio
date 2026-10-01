@@ -11,7 +11,8 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "test": "tsx --test 'src/**/*.test.ts'",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "render:stamps": "tsx scripts/render-stamps.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

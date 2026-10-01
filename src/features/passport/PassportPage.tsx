@@ -1,9 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { WineEntry } from '../../domain/wine-entry';
-import { countryName } from '../../domain/countries';
+import { evaluateStamps } from '../../domain/stamps/evaluate';
+import { stampSummary } from '../../domain/stamps/view';
 import { CountryStamp } from '../../components/proto/CountryStamp';
 import { Icon } from '../../components/proto/Sprite';
 import { ModeToggle, pad } from '../../components/proto/bits';
+import { MilestonesSection } from './MilestonesSection';
 
 type Mode = 'mine' | 'demo';
 
@@ -12,37 +14,53 @@ interface PassportPageProps {
   demoEntries: WineEntry[];
   defaultMode: Mode;
   onOpenCountry: (code: string, mode: Mode) => void;
+  /** Carimbos já vistos, gravados nas preferências. */
+  seenStampIds: readonly string[];
+  /** Carimbos anunciados nesta sessão e ainda não vistos aqui. */
+  highlights: ReadonlySet<string>;
+  onStampsSeen: (ids: string[]) => void;
+  onOpenEntry: (id: string) => void;
 }
 
-interface Milestone {
-  key: 'first' | 'vocabulary' | 'revisited' | 'origin';
-  glyph: string;
-  title: string;
-  description: string;
-}
+/** Ícone do sprite de cada marca antiga da página 02. */
+const LEGACY_ICONS: Record<string, string> = {
+  'legado.first': 'book',
+  'legado.vocabulary': 'leaf',
+  'legado.revisited': 'edit',
+  'legado.origin': 'passport',
+};
 
-const MILESTONES: Milestone[] = [
-  ['first', 'book', 'Primeira página', 'Uma impressão pessoal guardada, do seu jeito.'],
-  ['vocabulary', 'leaf', 'Meu vocabulário', 'Um aroma descrito com as suas próprias referências.'],
-  ['revisited', 'edit', 'Memória revisitada', 'Uma nova observação acrescentada a uma ficha sua.'],
-  ['origin', 'passport', 'Origem registrada', 'O país de um rótulo confirmado no caderno.'],
-].map(([key, glyph, title, description]) => ({
-  key: key as Milestone['key'],
-  glyph: glyph as string,
-  title: title as string,
-  description: description as string,
-}));
-
-/** Passaporte do paladar: carimbos de origem e pequenas conquistas, no padrão do protótipo. */
+/** Passaporte do paladar: carimbos de origem, pequenas conquistas e marcos, no padrão do protótipo. */
 export const PassportPage: React.FC<PassportPageProps> = ({
   entries,
   demoEntries,
   defaultMode,
   onOpenCountry,
+  seenStampIds,
+  highlights,
+  onStampsSeen,
+  onOpenEntry,
 }) => {
   const [mode, setMode] = useState<Mode>(defaultMode);
   const demo = mode === 'demo';
   const records = demo ? demoEntries : entries;
+
+  // Marcos pessoais só das fichas pessoais; os de exemplo só das fichas de exemplo.
+  const personalStates = useMemo(() => evaluateStamps(entries), [entries]);
+  const demoStates = useMemo(() => evaluateStamps(demoEntries, { source: 'demo' }), [demoEntries]);
+  const states = demo ? demoStates : personalStates;
+  const legacy = states.filter((state) => state.def.family === 'legado');
+  const summary = stampSummary(states);
+
+  // "NOVO" vale para esta visita: foto do que ainda não tinha sido visto quando a página abriu.
+  const [seenAtOpen] = useState(() => new Set(seenStampIds));
+  const [highlightedAtOpen] = useState(() => new Set(highlights));
+  const isNew = (id: string) => !demo && (!seenAtOpen.has(id) || highlightedAtOpen.has(id));
+
+  useEffect(() => {
+    onStampsSeen(personalStates.filter((state) => state.earned).map((state) => state.def.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [personalStates]);
 
   const countries = useMemo(() => {
     const map = new Map<string, number>();
@@ -53,13 +71,6 @@ export const PassportPage: React.FC<PassportPageProps> = ({
     return map;
   }, [records]);
 
-  const earned = {
-    first: records.some((e) => e.conclusao?.impressaoFinal?.trim()),
-    vocabulary: records.some((e) => e.aromaTags?.length),
-    revisited: records.some((e) => e.evidence?.revisitedAt),
-    origin: countries.size > 0,
-  };
-  const earnedCount = Object.values(earned).filter(Boolean).length;
   const blanks = Array.from(
     { length: Math.max(1, Math.min(4, 6 - countries.size)) },
     (_, i) => i
@@ -78,7 +89,7 @@ export const PassportPage: React.FC<PassportPageProps> = ({
           <p>
             Um registro de onde vêm as suas memórias.
             <br />
-            Sem metas, sem pressa, sem precisar ir a lugar nenhum.
+            Marcos que contam fichas, sem prazo, sem pressa e sem precisar ir a lugar nenhum.
           </p>
         </div>
         <ModeToggle current={mode} onChange={setMode} />
@@ -131,21 +142,20 @@ export const PassportPage: React.FC<PassportPageProps> = ({
 
           <div className="book-page">
             <div className="mono muted" style={{ fontSize: 8 }}>
-              {demo ? 'AS MARCAS ABAIXO SÃO APENAS EXEMPLOS' : 'CONQUISTAS SEM CONTAGEM DE CONSUMO'}
+              {demo ? 'AS MARCAS ABAIXO SÃO APENAS EXEMPLOS' : 'MARCAS DO SEU JEITO DE ANOTAR'}
             </div>
             <h2>Do seu jeito.</h2>
             <p className="muted">O que vale aqui é observar, registrar e revisitar.</p>
             <div className="journey-list">
-              {MILESTONES.map((m) => {
-                const isEarned = earned[m.key];
+              {legacy.map(({ def, earned: isEarned }) => {
                 return (
-                  <div key={m.key} className={`journey-item ${isEarned ? '' : 'locked'}`}>
+                  <div key={def.id} className={`journey-item ${isEarned ? '' : 'locked'}`}>
                     <span className="journey-seal">
-                      <Icon name={isEarned ? m.glyph : 'lock'} />
+                      <Icon name={isEarned ? LEGACY_ICONS[def.id] : 'lock'} />
                     </span>
                     <div>
-                      <h3>{m.title}</h3>
-                      <p>{m.description}</p>
+                      <h3>{def.title}</h3>
+                      <p>{def.description}</p>
                       <small>
                         {demo
                           ? isEarned
@@ -165,23 +175,48 @@ export const PassportPage: React.FC<PassportPageProps> = ({
         </div>
       </div>
 
+      <div className="passport-book milestones-book">
+        <div className="book-spread single">
+          <div className="book-page">
+            <div className="mono muted" style={{ fontSize: 8 }}>
+              {demo ? 'CARIMBOS ILUSTRATIVOS / COLEÇÃO DE EXEMPLO' : 'MARCOS DO CADERNO / CONTAM FICHAS, NUNCA DIAS'}
+            </div>
+            <h2>Marcos do caderno.</h2>
+            <p className="muted">
+              {demo
+                ? 'Selos de exemplo, tirados das seis fichas fictícias.'
+                : `${summary.earned} de ${summary.total} marcos, todos tirados das fichas que você guardou.`}
+            </p>
+            <MilestonesSection
+              key={mode}
+              states={states}
+              demo={demo}
+              isNew={isNew}
+              onOpenEntry={onOpenEntry}
+            />
+            <span className="page-number">03 / MARCOS</span>
+          </div>
+        </div>
+      </div>
+
       <div className="passport-bottom">
         <div className="note-horizontal">
           <Icon name="book" />
           <div>
             <h3>A experiência é sua. O ritmo também.</h3>
             <p>
-              Sem sequências diárias, ranking ou incentivo a beber mais. Relembrar uma página
-              também faz parte.
+              Os marcos contam fichas guardadas, nunca dias seguidos. Sem ranking, sem prazo e sem
+              incentivo a beber mais. Relembrar uma página também faz parte.
             </p>
           </div>
         </div>
         <div className="journey-stat">
-          <strong>{pad(earnedCount)}</strong>
+          <strong>{pad(summary.earned)}</strong>
           <p>
+            de {summary.total} marcos.{' '}
             {demo
               ? 'Marcas ilustrativas para você visualizar a proposta.'
-              : 'Marcas nascidas das suas anotações, não da quantidade de vinho.'}
+              : 'Todas nascidas das suas fichas, no seu ritmo.'}
           </p>
         </div>
       </div>
@@ -191,7 +226,7 @@ export const PassportPage: React.FC<PassportPageProps> = ({
         <p>
           {demo
             ? 'Este passaporte usa dados fictícios. Selecione “Minhas anotações” para ver apenas o que você registrou.'
-            : 'Carimbo de origem significa que um país está nas suas anotações, não que você o visitou. Os exemplos nunca geram conquistas pessoais.'}
+            : 'Carimbo de origem significa que um país está nas suas anotações, não que você o visitou. Os marcos contam fichas, não garrafas, e os exemplos nunca geram conquistas pessoais.'}
         </p>
       </div>
     </section>
