@@ -3,7 +3,7 @@ import { isFilled, isGridComplete } from '../asi-fields';
 import { AROMA_GROUPS, aromaGroupOf } from '../aroma-catalog';
 import { codesOf, DISH_STYLE, PAIRING_COMPONENTS, SUBSTYLE_GROUPS, WINE_TYPES } from '../asi-vocabulary';
 import { GRAPES, type Grape } from './grape-catalog';
-import { fold, grapeKeysOf, trusted } from './normalize';
+import { aromaTagsOf, fold, grapeKeysOf, trusted } from './normalize';
 import { REGIONS, type Region } from './region-catalog';
 import type { Ctx, Rule, StampDef, Tier } from './rules';
 
@@ -112,9 +112,9 @@ const hasFault = (e: WineEntry) => (e.olfato.faults ?? []).length > 0 || (e.pala
 
 const trustedFilled = (e: WineEntry, path: string) => isFilled(e, path) && trusted(e, path);
 const gridComplete = (e: WineEntry) => isGridComplete(e, trustedFilled);
-const aromaTags = (e: WineEntry) => (e.aromaTags ?? []).map(fold).filter(Boolean);
+const aromaTags = (e: WineEntry) => aromaTagsOf(e).map(fold).filter(Boolean);
 const aromaGroups = (e: WineEntry) =>
-  (e.aromaTags ?? []).flatMap((tag) => {
+  aromaTagsOf(e).flatMap((tag) => {
     const group = aromaGroupOf(tag);
     return group ? [group.code] : [];
   });

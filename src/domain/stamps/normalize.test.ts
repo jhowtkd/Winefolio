@@ -6,6 +6,7 @@ import { GRAPES } from './grape-catalog.js';
 import { REGIONS } from './region-catalog.js';
 import {
   aliasTable,
+  aromaTagsOf,
   countryOf,
   fold,
   grapeKeysOf,
@@ -166,6 +167,32 @@ describe('countryOf', () => {
       countryOf(entry({ ...ai, provenance: { regiaoPais: 'user' }, origin: { countryCode: 'PT', region: '' } })),
       'PT'
     );
+  });
+});
+
+describe('aromaTagsOf', () => {
+  const olfato = createEntry('x').olfato;
+  const scanned: Partial<WineEntry> = {
+    olfato: { ...olfato, aromas: 'Cassis, Cedro' },
+    aromaTags: ['Cassis', 'Cedro'],
+    provenance: { 'olfato.aromas': 'ai-unverified' },
+  };
+
+  it('devolve as tags da ficha', () => {
+    assert.deepStrictEqual(aromaTagsOf(entry()), []);
+    assert.deepStrictEqual(aromaTagsOf(entry({ aromaTags: ['Cassis', 'Cedro'] })), ['Cassis', 'Cedro']);
+  });
+
+  it('não conta aroma sugerido pela IA sem revisão', () => {
+    assert.deepStrictEqual(aromaTagsOf(entry(scanned)), []);
+  });
+
+  it('conta o aroma que a pessoa acrescentou depois da leitura', () => {
+    assert.deepStrictEqual(aromaTagsOf(entry({ ...scanned, aromaTags: ['Cassis', 'Cedro', 'Couro'] })), ['Couro']);
+  });
+
+  it('conta tudo depois de a leitura ser confirmada', () => {
+    assert.deepStrictEqual(aromaTagsOf(entry({ ...scanned, provenance: { 'olfato.aromas': 'user' } })), ['Cassis', 'Cedro']);
   });
 });
 

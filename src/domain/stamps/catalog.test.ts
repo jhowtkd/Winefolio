@@ -183,6 +183,20 @@ describe('fixed rules', () => {
     assert.strictEqual(state([sparkling], 'estilo.primeiro-espumante').earned, false);
   });
 
+  it('aroma sugerido pela IA sem revisão não conta para os marcos de aromas', () => {
+    const olfato = createEntry('x').olfato;
+    const names = Array.from({ length: 10 }, (_, i) => `Aroma ${i}`);
+    const scanned = entry({
+      olfato: { ...olfato, aromas: names.join(', ') },
+      aromaTags: names,
+      provenance: { 'olfato.aromas': 'ai-unverified' },
+    });
+    assert.strictEqual(state([scanned], 'tecnica.aromas-10').current, 0);
+    assert.strictEqual(state([scanned], 'tecnica.grupos').current, 0);
+    const confirmed = { ...scanned, provenance: { 'olfato.aromas': 'user' as const } };
+    assert.strictEqual(state([confirmed], 'tecnica.aromas-10').earned, true);
+  });
+
   it('Origem registrada segue a regra antiga', () => {
     assert.strictEqual(state([from('other')], 'legado.origin').earned, false);
     assert.strictEqual(state([from('GR')], 'legado.origin').earned, true);

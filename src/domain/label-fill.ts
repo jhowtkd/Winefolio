@@ -103,16 +103,18 @@ function fillCoded<T>(
   return converted ? converted.value : null;
 }
 
+/** Tags que a leitura de rótulo tira do texto de aromas. */
+export function aromaTagsFromText(aromas: string): string[] {
+  return aromas
+    .split(/[,;/]/)
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
 export function applyLabelAnalysis(entry: WineEntry, analysis: LabelAnalysis): WineEntry {
   const regiaoPais = keep(entry.regiaoPais, analysis.regiaoPais);
   const aromas = keep(entry.olfato.aromas, analysis.aromasSugeridos);
-  const aromaTags =
-    entry.aromaTags.length > 0
-      ? entry.aromaTags
-      : aromas
-          .split(/[,;/]/)
-          .map((tag) => tag.trim())
-          .filter(Boolean);
+  const aromaTags = entry.aromaTags.length > 0 ? entry.aromaTags : aromaTagsFromText(aromas);
   const style = asWineStyle(analysis.estilo);
   const notes = { ...entry.legacyNotes };
 

@@ -1,5 +1,6 @@
 import type { WineEntry } from '../wine-entry';
 import { inferCountryCode } from '../countries';
+import { aromaTagsFromText } from '../label-fill';
 import { GRAPES, type Alias, type GrapeId } from './grape-catalog';
 import { REGIONS, type Region, type RegionId } from './region-catalog';
 
@@ -168,4 +169,15 @@ export function countryOf(entry: WineEntry): string | null {
   if (!code || code === 'other') return null;
   if (!trusted(entry, 'regiaoPais') && inferCountryCode(entry.regiaoPais ?? '') === code) return null;
   return code;
+}
+
+/**
+ * Aromas da ficha para os marcos. `aromaTags` não tem chave de provenance: a leitura de rótulo tira
+ * as tags de `olfato.aromas`. Se esse texto não foi revisado, a tag que ele daria não conta.
+ */
+export function aromaTagsOf(entry: WineEntry): string[] {
+  const tags = entry.aromaTags ?? [];
+  if (tags.length === 0 || trusted(entry, 'olfato.aromas')) return tags;
+  const suggested = new Set(aromaTagsFromText(entry.olfato?.aromas ?? '').map(fold));
+  return tags.filter((tag) => !suggested.has(fold(tag)));
 }

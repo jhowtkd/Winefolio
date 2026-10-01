@@ -68,6 +68,7 @@ Escolha: B. Sem mudança de schema. Se um dia a ficha ganhar seletor de uva, o c
 4. Regiões: casar `origin.region` e `regiaoPais` contra os sinônimos. Sub-região conta para a região mãe (Pauillac conta para Bordeaux). O nome do vinho (`vinho`) não entra: "Chablis" no nome de um vinho da Califórnia seria falso positivo.
 5. Uma ficha conta no máximo uma vez por uva e uma vez por região, mesmo com a uva repetida no texto.
 6. País: `origin.countryCode`, sem `'other'`. Não tem chave de `provenance`; a leitura de rótulo deriva o país de `regiaoPais`. Por isso o país não conta quando `regiaoPais` está `'ai-unverified'` e o código é o mesmo que `inferCountryCode(regiaoPais)` daria.
+7. Aromas: `aromaTags`. Também não tem chave de `provenance`; a leitura de rótulo tira as tags de `olfato.aromas`. Enquanto `olfato.aromas` está `'ai-unverified'`, a tag que esse texto daria não conta. A tag que a pessoa acrescentou conta.
 
 ## Arquitetura
 
@@ -389,7 +390,7 @@ No `PassportPage`, uma terceira página do livro: "03 / MARCOS".
 
 - Os títulos de região usam a preposição do nome: "Visitante do Douro", "Amante da Toscana", "Cidadão de Bordeaux". `REGIONS` ganhou `of`.
 - O casamento de sinônimos é palavra a palavra, com o mais longo primeiro e consumindo o trecho, em vez de uma expressão regular com todos os sinônimos. Com mil fichas a avaliação completa ficou em torno de 18 ms no Node.
-- A confiança na leitura de rótulo vale para todo campo de `AI_FILLED_PATHS` que um marco lê (tipo, estilo, safra, produtor, harmonização, temperatura, decantação, guarda), não só uva, região e país. O marco legado "Origem registrada" manteve a regra antiga para ninguém perder marca já exibida.
+- A confiança na leitura de rótulo vale para todo campo de `AI_FILLED_PATHS` que um marco lê (tipo, estilo, safra, produtor, aromas, harmonização, temperatura, decantação, guarda), não só uva, região e país. Os marcos legados "Origem registrada" e "Meu vocabulário" mantiveram a regra antiga para ninguém perder marca já exibida.
 - "Grade completa" é `isGridComplete` em `asi-fields.ts`: campos com termo ASI que se aplicam à ficha, sem o toggle de laranja e sem as listas sem regra de aplicação.
 - O aviso de carimbo novo entra no toast de salvamento ("Ficha salva" + "Novo carimbo no passaporte: …"), com a ação "Ver". O id vai para `seenStampIds` no momento do aviso; o selo "NOVO" continua na página até a primeira visita da sessão por um conjunto em memória. Se a pessoa recarregar antes de abrir o passaporte, o "NOVO" daquele carimbo não aparece.
 - Salvar favorito também pode anunciar marco ("Coleção do coração"). Importação e carga dos exemplos não anunciam; os marcos aparecem como "NOVO" na página.
