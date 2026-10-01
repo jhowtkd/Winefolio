@@ -1,9 +1,9 @@
 import type { WineEntry } from '../wine-entry';
-import { isFilled, isGridComplete } from '../asi-fields';
+import { isGridComplete } from '../asi-fields';
 import { AROMA_GROUPS, aromaGroupOf } from '../aroma-catalog';
 import { codesOf, DISH_STYLE, PAIRING_COMPONENTS, SUBSTYLE_GROUPS, WINE_TYPES } from '../asi-vocabulary';
 import { GRAPES, type Grape } from './grape-catalog';
-import { aromaTagsOf, fold, grapeKeysOf, trusted } from './normalize';
+import { aromaTagsOf, fold, grapeKeysOf, trusted, trustedFilled } from './normalize';
 import { REGIONS, type Region } from './region-catalog';
 import type { Ctx, Rule, StampDef, Tier } from './rules';
 
@@ -110,7 +110,6 @@ const tasteIsTaste = (e: WineEntry) =>
 const longNote = (e: WineEntry) => (e.conclusao.impressaoFinal ?? '').trim().length >= 280;
 const hasFault = (e: WineEntry) => (e.olfato.faults ?? []).length > 0 || (e.paladar.faults ?? []).length > 0;
 
-const trustedFilled = (e: WineEntry, path: string) => isFilled(e, path) && trusted(e, path);
 const gridComplete = (e: WineEntry) => isGridComplete(e, trustedFilled);
 const aromaTags = (e: WineEntry) => aromaTagsOf(e).map(fold).filter(Boolean);
 const aromaGroups = (e: WineEntry) =>
@@ -118,7 +117,9 @@ const aromaGroups = (e: WineEntry) =>
     const group = aromaGroupOf(tag);
     return group ? [group.code] : [];
   });
-const colours = (e: WineEntry) => (e.estilo && e.visual.coreColour ? [`${e.estilo}.${e.visual.coreColour}`] : []);
+// O tom é estilo + cor, e a leitura de rótulo troca o estilo sem mexer numa cor que vale nos dois.
+const colours = (e: WineEntry) =>
+  e.estilo && e.visual.coreColour && trusted(e, 'estilo') ? [`${e.estilo}.${e.visual.coreColour}`] : [];
 const fullService = (e: WineEntry) =>
   trustedFilled(e, 'servico.temperature') && trustedFilled(e, 'servico.glass') && trustedFilled(e, 'servico.decant');
 

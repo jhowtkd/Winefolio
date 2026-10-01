@@ -197,6 +197,14 @@ describe('fixed rules', () => {
     assert.strictEqual(state([confirmed], 'tecnica.aromas-10').earned, true);
   });
 
+  it('cor com estilo lido pela IA sem revisão não conta como tom novo', () => {
+    const visual = createEntry('x').visual;
+    const scanned = entry({ estilo: 'branco', visual: { ...visual, coreColour: 'brown' }, provenance: { estilo: 'ai-unverified' } });
+    assert.strictEqual(state([scanned], 'tecnica.cor').current, 0);
+    const confirmed = { ...scanned, provenance: { estilo: 'user' as const } };
+    assert.strictEqual(state([confirmed], 'tecnica.cor').current, 1);
+  });
+
   it('Origem registrada segue a regra antiga', () => {
     assert.strictEqual(state([from('other')], 'legado.origin').earned, false);
     assert.strictEqual(state([from('GR')], 'legado.origin').earned, true);

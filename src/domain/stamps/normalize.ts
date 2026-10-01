@@ -1,4 +1,5 @@
 import type { WineEntry } from '../wine-entry';
+import { isFilled } from '../asi-fields';
 import { inferCountryCode } from '../countries';
 import { aromaTagsFromText } from '../label-fill';
 import { GRAPES, type Alias, type GrapeId } from './grape-catalog';
@@ -180,4 +181,10 @@ export function aromaTagsOf(entry: WineEntry): string[] {
   if (tags.length === 0 || trusted(entry, 'olfato.aromas')) return tags;
   const suggested = new Set(aromaTagsFromText(entry.olfato?.aromas ?? '').map(fold));
   return tags.filter((tag) => !suggested.has(fold(tag)));
+}
+
+/** Campo preenchido e revisado, para os marcos que pedem a ficha completa. */
+export function trustedFilled(entry: WineEntry, path: string): boolean {
+  if (path === 'aromaTags') return aromaTagsOf(entry).length > 0;
+  return isFilled(entry, path) && trusted(entry, path);
 }

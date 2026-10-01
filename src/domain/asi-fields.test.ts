@@ -16,6 +16,7 @@ import {
   getPath,
 } from './asi-fields.js';
 import { coreColoursFor } from './asi-vocabulary.js';
+import { trustedFilled } from './stamps/normalize.js';
 import type { WineEntry } from './wine-entry.js';
 
 const paths = (entry: WineEntry, section: Parameters<typeof visibleFields>[1], advanced: boolean) =>
@@ -258,5 +259,17 @@ describe('isGridComplete', () => {
   it('quem chama pode recusar um campo', () => {
     const filled = fillGrid(red);
     assert.strictEqual(isGridComplete(filled, (entry, path) => path !== 'paladar.abv'), false);
+  });
+
+  it('para os marcos, aroma sugerido pela IA sem revisão deixa a grade incompleta', () => {
+    const filled = fillGrid(red);
+    const scanned: WineEntry = {
+      ...filled,
+      olfato: { ...filled.olfato, aromas: 'Framboesa' },
+      provenance: { 'olfato.aromas': 'ai-unverified' },
+    };
+    assert.strictEqual(isGridComplete(filled, trustedFilled), true);
+    assert.strictEqual(isGridComplete(scanned, trustedFilled), false);
+    assert.strictEqual(isGridComplete({ ...scanned, provenance: { 'olfato.aromas': 'user' } }, trustedFilled), true);
   });
 });

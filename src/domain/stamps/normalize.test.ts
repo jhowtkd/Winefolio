@@ -14,6 +14,7 @@ import {
   regionsOf,
   splitGrapeText,
   trusted,
+  trustedFilled,
 } from './normalize.js';
 
 function entry(patch: Partial<WineEntry> = {}): WineEntry {
@@ -201,6 +202,26 @@ describe('trusted', () => {
     assert.strictEqual(trusted(entry({ provenance: { uvas: 'ai-unverified' } }), 'uvas'), false);
     assert.strictEqual(trusted(entry({ provenance: { uvas: 'imported-user' } }), 'uvas'), true);
     assert.strictEqual(trusted(entry(), 'uvas'), true);
+  });
+});
+
+describe('trustedFilled', () => {
+  it('pede campo preenchido e revisado', () => {
+    assert.strictEqual(trustedFilled(entry(), 'uvas'), false);
+    assert.strictEqual(trustedFilled(entry({ uvas: 'Syrah' }), 'uvas'), true);
+    assert.strictEqual(trustedFilled(entry({ uvas: 'Syrah', provenance: { uvas: 'ai-unverified' } }), 'uvas'), false);
+  });
+
+  it('nas tags de aroma, segue a revisão do texto de onde elas vieram', () => {
+    const olfato = createEntry('x').olfato;
+    const scanned: Partial<WineEntry> = {
+      olfato: { ...olfato, aromas: 'Cassis' },
+      aromaTags: ['Cassis'],
+      provenance: { 'olfato.aromas': 'ai-unverified' },
+    };
+    assert.strictEqual(trustedFilled(entry(scanned), 'aromaTags'), false);
+    assert.strictEqual(trustedFilled(entry({ ...scanned, aromaTags: ['Cassis', 'Couro'] }), 'aromaTags'), true);
+    assert.strictEqual(trustedFilled(entry({ aromaTags: ['Cassis'] }), 'aromaTags'), true);
   });
 });
 
