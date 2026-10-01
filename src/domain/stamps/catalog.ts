@@ -171,9 +171,11 @@ function vertical(ctx: Ctx) {
   for (const entry of ctx.entries) {
     const vintage = vintageOf(entry);
     if (vintage === null || !trusted(entry, 'produtor') || !trusted(entry, 'vinho')) continue;
+    const producer = fold(entry.produtor ?? '');
     const wine = fold(entry.vinho ?? '');
-    if (!wine) continue;
-    const key = `${fold(entry.produtor ?? '')}|${wine}`;
+    // Sem produtor, dois "Reserva" de casas diferentes cairiam na mesma chave.
+    if (!producer || !wine) continue;
+    const key = `${producer}|${wine}`;
     const seen = vintages.get(key) ?? new Set<number>();
     seen.add(vintage);
     vintages.set(key, seen);

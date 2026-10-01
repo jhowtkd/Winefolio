@@ -140,6 +140,11 @@ describe('fixed rules', () => {
     assert.strictEqual(state([...three, last], 'tecnica.vertical').earnedByEntryId, last.id);
   });
 
+  it('Degustação vertical não junta vinhos sem produtor pelo nome', () => {
+    const unnamed = ['2015', '2016', '2018'].map((safra) => entry({ produtor: '', vinho: 'Reserva', safra }));
+    assert.strictEqual(state(unnamed, 'tecnica.vertical').current, 0);
+  });
+
   it('Arqueólogo compara a safra com o ano da degustação', () => {
     assert.strictEqual(state([entry({ safra: '2006' }, '2026-05-01')], 'tecnica.arqueologo').earned, true);
     assert.strictEqual(state([entry({ safra: '2007' }, '2026-05-01')], 'tecnica.arqueologo').earned, false);
