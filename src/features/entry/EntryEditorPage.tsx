@@ -6,6 +6,7 @@ import type {
   WineStyle,
   PhotoChange,
   SheetLevel,
+  DataSource,
 } from '../../domain/wine-entry';
 import { createEntry } from '../../domain/wine-factory';
 import { COUNTRIES, inferCountryCode } from '../../domain/countries';
@@ -111,6 +112,26 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
       newOne.skinContact = fromTemplate.skinContact ?? false;
       newOne.subestilo = fromTemplate.subestilo ?? null;
       newOne.tags = fromTemplate.tags ? [...fromTemplate.tags] : [];
+
+      if (fromTemplate.provenance) {
+        const copiedFields = [
+          'produtor',
+          'vinho',
+          'uvas',
+          'regiaoPais',
+          'tipo',
+          'estilo',
+          'skinContact',
+          'subestilo',
+        ];
+        const nextProvenance: Record<string, DataSource> = { ...newOne.provenance };
+        for (const field of copiedFields) {
+          if (fromTemplate.provenance[field]) {
+            nextProvenance[field] = fromTemplate.provenance[field];
+          }
+        }
+        newOne.provenance = nextProvenance;
+      }
     }
 
     return newOne;

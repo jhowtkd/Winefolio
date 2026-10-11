@@ -95,7 +95,7 @@ const AppContent: React.FC = () => {
 
   const showDemo = preferences.showDemo !== false;
   const shown = visibleEntries(entries, showDemo);
-  const ownEntries = entries.filter((e) => !e._demo);
+  const ownEntries = entries.filter((e) => e.kind !== 'demo' && !e._demo);
   const demoEntries = getDemoWines();
 
   const handleSearchChange = (query: string) => {

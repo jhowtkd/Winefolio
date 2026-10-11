@@ -135,6 +135,18 @@ export function createWineRepository(db: IDBPDatabase<WineDb>): WineRepository {
           atualizadoEm: now,
         };
 
+        if (
+          current && current.kind !== 'demo' && !current._demo &&
+          savedEntry.kind !== 'demo' && !savedEntry._demo &&
+          savedEntry.conclusao.impressaoFinal.trim() &&
+          savedEntry.conclusao.impressaoFinal.trim() !== current.conclusao.impressaoFinal.trim()
+        ) {
+          savedEntry.evidence = {
+            ...savedEntry.evidence,
+            revisitedAt: savedEntry.evidence.revisitedAt ?? now,
+          };
+        }
+
         await recordsStore.put(savedEntry);
         await tx.done;
 
