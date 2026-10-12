@@ -296,7 +296,7 @@ export const PassportPage: React.FC<PassportPageProps> = ({
                 className={`journey-item ${isEarned ? '' : 'locked'}`}
                 onPointerLeave={(event) => {
                   if (event.pointerType !== 'touch' && !event.currentTarget.querySelector('button')?.matches(':focus-visible')) {
-                    const popup = event.currentTarget.querySelector<HTMLElement>('.journey-tooltip');
+                    const popup = (event.currentTarget as HTMLDivElement).querySelector<HTMLElement>('.journey-tooltip');
                     try { popup?.hidePopover(); } catch {}
                   }
                 }}
