@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { createEntry } from './wine-factory.js';
-import { applyLabelAnalysis, settleAiProvenance, aiSuggestedFields } from './label-fill.js';
+import { applyLabelAnalysis, settleAiProvenance, aiSuggestedFields, aromaTagsFromText } from './label-fill.js';
 
 describe('applyLabelAnalysis', () => {
   it('preenche campos vazios e não apaga o que a pessoa já escreveu', () => {
@@ -106,5 +106,17 @@ describe('proveniência da leitura de rótulo', () => {
     assert.strictEqual(settled.provenance.vinho, 'user');
     assert.strictEqual(settled.provenance.safra, 'ai-unverified');
     assert.deepStrictEqual(aiSuggestedFields(settled), ['safra']);
+  });
+});
+
+describe('aromaTagsFromText', () => {
+  it('divide aromas por vírgula, ponto e vírgula e barra, remove espaços e ignora vazios', () => {
+    const text = ' Cassis, Cedro; / Couro / ; ';
+    assert.deepStrictEqual(aromaTagsFromText(text), ['Cassis', 'Cedro', 'Couro']);
+    assert.deepStrictEqual(aromaTagsFromText(' , ; / '), []);
+    const read = applyLabelAnalysis(createEntry('tags'), { aromasSugeridos: text });
+    assert.deepStrictEqual(read.aromaTags, aromaTagsFromText(text));
+    const own = { ...createEntry('own-tags'), aromaTags: ['Violeta'] };
+    assert.deepStrictEqual(applyLabelAnalysis(own, { aromasSugeridos: text }).aromaTags, ['Violeta']);
   });
 });
