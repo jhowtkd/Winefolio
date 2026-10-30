@@ -241,3 +241,30 @@ describe('passport progress', () => {
     }
   });
 });
+
+describe('predicados compartilhados do Passaporte', () => {
+  it('preserva os países e os três critérios legados da main mesmo com provenance de IA', () => {
+    const first = createEntry('legacy-ai');
+    first.origin.countryCode = 'PT';
+    first.regiaoPais = 'Douro, Portugal';
+    first.aromaTags = ['Cassis'];
+    first.conclusao.impressaoFinal = 'Minha impressão.';
+    first.provenance = {
+      'origin.countryCode': 'ai-unverified',
+      regiaoPais: 'ai-unverified',
+      aromaTags: 'ai-unverified',
+      'olfato.aromas': 'ai-unverified',
+      'conclusao.impressaoFinal': 'ai-unverified',
+    };
+    const second = { ...createEntry('same-country'), origin: { countryCode: 'PT', region: '' } };
+    const outside = { ...createEntry('outside-list'), origin: { countryCode: 'GR', region: '' } };
+    const other = { ...createEntry('other'), origin: { countryCode: 'other', region: '' } };
+    const demo = { ...createEntry('demo-country'), kind: 'demo' as const, origin: { countryCode: 'BR', region: '' } };
+    const progress = passportProgress([first, second, outside, other, demo]);
+    assert.deepEqual([...progress.countries], [['PT', 2], ['GR', 1]]);
+    assert.deepEqual(
+      passportProgress([first]).milestones.filter((m) => m.earned).map((m) => m.id),
+      ['legado.first', 'legado.vocabulary', 'legado.origin']
+    );
+  });
+});

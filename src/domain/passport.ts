@@ -84,6 +84,42 @@ function isFieldVerified(entry: WineEntry, ...paths: string[]): boolean {
   return paths.every((path) => entry.provenance?.[path] !== 'ai-unverified');
 }
 
+export const PASSPORT_ENTRY_RULES = {
+  'legado.first': (entry) => Boolean(entry.conclusao?.impressaoFinal?.trim()),
+  'legado.vocabulary': (entry) => Boolean(entry.aromaTags?.some((tag) => Boolean(tag.trim()))),
+  'legado.revisited': (entry) => Boolean(entry.evidence?.revisitedAt),
+  'legado.origin': (entry) => Boolean(entry.origin?.countryCode) && entry.origin.countryCode !== 'other',
+  'estilo.primeiro-espumante': (entry) => entry.tipo === 'espumante' && isFieldVerified(entry, 'tipo'),
+  'estilo.laranja': (entry) =>
+    entry.estilo === 'branco' &&
+    entry.skinContact === true &&
+    isFieldVerified(entry, 'estilo', 'skinContact'),
+  'estilo.fortificado': (entry) => entry.tipo === 'fortificado' && isFieldVerified(entry, 'tipo'),
+  'harmonizacao.1': (entry) =>
+    Boolean(entry.conclusao?.harmonizacao?.trim()) &&
+    isFieldVerified(entry, 'conclusao.harmonizacao', 'harmonizacao'),
+  'critica.primeira-nota': (entry) => {
+    const stars = entry.conclusao?.avaliacaoEstrelas;
+    return (
+      typeof stars === 'number' &&
+      Number.isInteger(stars) &&
+      stars >= 1 &&
+      stars <= 5 &&
+      isFieldVerified(entry, 'conclusao.avaliacaoEstrelas', 'avaliacaoEstrelas')
+    );
+  },
+  'critica.cinco': (entry) => {
+    const stars = entry.conclusao?.avaliacaoEstrelas;
+    return (
+      stars === 5 &&
+      isFieldVerified(entry, 'conclusao.avaliacaoEstrelas', 'avaliacaoEstrelas')
+    );
+  },
+  'critica.asi-1': (entry) =>
+    ASI_QUALITY.some((opt) => opt.code === entry.conclusao?.asiQuality) &&
+    isFieldVerified(entry, 'conclusao.asiQuality', 'asiQuality'),
+} satisfies Record<string, (entry: WineEntry) => boolean>;
+
 export function passportProgress(entries: WineEntry[], mode: PassportMode = 'mine') {
   const records = entries.filter((entry) => {
     const demo = entry.kind === 'demo' || entry._demo === true;
@@ -96,51 +132,9 @@ export function passportProgress(entries: WineEntry[], mode: PassportMode = 'min
     if (code && code !== 'other') countries.set(code, (countries.get(code) ?? 0) + 1);
   }
 
-  const earned: Record<string, boolean> = {
-    'legado.first': records.some((entry) => Boolean(entry.conclusao?.impressaoFinal?.trim())),
-    'legado.vocabulary': records.some((entry) => entry.aromaTags?.some((tag) => Boolean(tag.trim()))),
-    'legado.revisited': records.some((entry) => Boolean(entry.evidence?.revisitedAt)),
-    'legado.origin': countries.size > 0,
-    'estilo.primeiro-espumante': records.some(
-      (entry) => entry.tipo === 'espumante' && isFieldVerified(entry, 'tipo')
-    ),
-    'estilo.laranja': records.some(
-      (entry) =>
-        entry.estilo === 'branco' &&
-        entry.skinContact === true &&
-        isFieldVerified(entry, 'estilo', 'skinContact')
-    ),
-    'estilo.fortificado': records.some(
-      (entry) => entry.tipo === 'fortificado' && isFieldVerified(entry, 'tipo')
-    ),
-    'harmonizacao.1': records.some(
-      (entry) =>
-        Boolean(entry.conclusao?.harmonizacao?.trim()) &&
-        isFieldVerified(entry, 'conclusao.harmonizacao', 'harmonizacao')
-    ),
-    'critica.primeira-nota': records.some((entry) => {
-      const stars = entry.conclusao?.avaliacaoEstrelas;
-      return (
-        typeof stars === 'number' &&
-        Number.isInteger(stars) &&
-        stars >= 1 &&
-        stars <= 5 &&
-        isFieldVerified(entry, 'conclusao.avaliacaoEstrelas', 'avaliacaoEstrelas')
-      );
-    }),
-    'critica.cinco': records.some((entry) => {
-      const stars = entry.conclusao?.avaliacaoEstrelas;
-      return (
-        stars === 5 &&
-        isFieldVerified(entry, 'conclusao.avaliacaoEstrelas', 'avaliacaoEstrelas')
-      );
-    }),
-    'critica.asi-1': records.some(
-      (entry) =>
-        ASI_QUALITY.some((opt) => opt.code === entry.conclusao?.asiQuality) &&
-        isFieldVerified(entry, 'conclusao.asiQuality', 'asiQuality')
-    ),
-  };
+  const earned: Record<string, boolean> = Object.fromEntries(
+    Object.entries(PASSPORT_ENTRY_RULES).map(([id, rule]) => [id, records.some(rule)])
+  );
 
   const milestones = PASSPORT_MILESTONES.map((milestone) => ({
     ...milestone,
