@@ -2,6 +2,10 @@ import { test, expect } from '@playwright/test';
 import { card, createEntry } from './helpers';
 
 test('o passaporte libera os selos das anotações e mantém os exemplos separados', async ({ page, isMobile }, testInfo) => {
+  // A rolagem fecha o popup de propósito. Com a virada de página e a rolagem suave, o hover
+  // pode terminar antes de a página parar de rolar, e o popup fecha no meio da verificação.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+
   const nextBtn = page.getByRole('button', { name: 'Próxima página', exact: true });
   const prevBtn = page.getByRole('button', { name: 'Página anterior', exact: true });
 
