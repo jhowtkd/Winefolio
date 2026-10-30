@@ -2,6 +2,10 @@ import { test, expect } from '@playwright/test';
 import { card, createEntry } from './helpers';
 
 test('o passaporte libera os selos das anotações e mantém os exemplos separados', async ({ page, isMobile }, testInfo) => {
+  // A rolagem fecha o popup de propósito. Com a virada de página e a rolagem suave, o hover
+  // pode terminar antes de a página parar de rolar, e o popup fecha no meio da verificação.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+
   const nextBtn = page.getByRole('button', { name: 'Próxima página', exact: true });
   const prevBtn = page.getByRole('button', { name: 'Página anterior', exact: true });
 
@@ -105,6 +109,18 @@ test('o passaporte libera os selos das anotações e mantém os exemplos separad
     await page.keyboard.press('Escape');
     await expect(tooltip).toBeHidden();
   }
+
+  // A rolagem fecha o popup, passada a guarda de 150 ms que ignora a rolagem do próprio toque.
+  if (isMobile) {
+    await firstSeal.tap();
+  } else {
+    await firstSeal.hover();
+  }
+  await expect(tooltip).toBeVisible();
+  await page.waitForTimeout(200);
+  await page.evaluate(() => window.scrollTo(0, window.scrollY > 0 ? 0 : 40));
+  await expect(tooltip).toBeHidden();
+  await page.mouse.move(0, 0);
 
   // Teste de navegação por teclado dentro do livro e fechamento de tooltip ao virar
   if (isMobile) {
