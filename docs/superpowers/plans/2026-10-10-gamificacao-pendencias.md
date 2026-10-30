@@ -1,5 +1,27 @@
 # Pendências e Roteiro dos 222 Selos Restantes do Catálogo
 
+> **Status em 2026-10-30 — leia antes do resto.** Este documento registra o estado de 2026-10-10 e ficou para trás. O domínio dos 233 selos entrou na `main` pelo PR #7 (`src/domain/stamps/`), mas a tela do Passaporte continua mostrando só os 11 selos de `passportProgress`: **domínio integrado não é interface entregue**. O restante do trabalho está em [`2026-10-30-passaporte-conciliacao-pr5.md`](2026-10-30-passaporte-conciliacao-pr5.md).
+>
+> As contagens da seção 1 continuam corretas como composição do catálogo; "Implementados" e "Restantes" se referem à interface de 2026-10-10. As decisões da seção 2 marcadas como pendentes foram resolvidas no código assim:
+>
+> | Tema | Como está em `src/domain/stamps/` |
+> |---|---|
+> | Cortes | Cada uva listada na ficha conta |
+> | Sinônimos | `grape-catalog.ts`, `region-catalog.ts` e `normalize.ts` |
+> | Limiares | Uvas 3/10/25 fichas; regiões 1/5/15 fichas |
+> | `pais.casa` | 10 fichas do Brasil |
+> | Velho e Novo Mundo | Velho: FR, IT, ES, PT, DE. Novo: AR, CL, BR, UY, US, AU, NZ, ZA |
+> | `pais.todos` | Os 13 países das duas listas |
+> | `volume.*` | Conta fichas, não taças; "Primeira taça" e "Mil taças" mantêm o título |
+> | Produtores | Nome dobrado por `fold` |
+> | Grade completa | `isGridComplete` mais `tipo`, `estilo` e `skinContact` confiáveis |
+> | Botrytis e método tradicional | Campo de vinificação |
+> | Harmonização | Todos os códigos de `PAIRING_COMPONENTS` (7) e `DISH_STYLE` (3) |
+> | `critica.defeito` | Um defeito em `olfato.faults` ou `paladar.faults` |
+> | Secretos | 5 fichas revisitadas (regra de `legado.revisited`); 20 favoritos |
+>
+> Campos preenchidos por IA e ainda não revisados ficam fora dessas regras. O caminho do `catalogo.json` citado abaixo aponta para uma máquina pessoal; a fonte em uso é o código.
+
 Este documento mapeia os 222 selos restantes do catálogo oficial de 233 selos (`/Users/jhonatan/Documents/Codex/2026-10-07/pr/outputs/selos-v03/catalogo.json`), após a implementação dos 11 selos iniciais (4 legados + 7 da etapa atual).
 
 Ele inventaria as pendências por família e especifica os critérios e decisões de modelagem necessários antes de qualquer implementação ou alteração de schema, respeitando a premissa de não inferir dados por heurísticas frouxas, não criar metas de consumo e não inventar evidências que o modelo de dados atual não possui.
