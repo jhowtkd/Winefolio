@@ -36,6 +36,7 @@ export const AI_FILLED_PATHS = [
   'regiaoPais',
   'tipo',
   'estilo',
+  'skinContact',
   'servico.temperature',
   'servico.decant',
   'visual.corHex',

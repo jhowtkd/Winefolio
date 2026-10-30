@@ -59,6 +59,17 @@ test('a grade completa acrescenta serviço e os campos avançados', async ({ pag
   await expect(page.getByText('Sedosos (Silky)')).toBeVisible();
 });
 
+test('aroma digitado sem acento continua visível e removível no editor', async ({ page }) => {
+  await page.goto('/#/novo');
+  await page.getByPlaceholder(NAME).fill('Aroma sem acento');
+  await openTab(page, /Nariz/);
+  await page.getByLabel('Outro aroma').fill('cafe');
+  await page.getByLabel('Outro aroma').press('Enter');
+  await expect(page.getByRole('button', { name: 'Remover cafe' })).toBeVisible();
+  await page.getByRole('button', { name: 'Remover cafe' }).click();
+  await expect(page.getByRole('button', { name: 'Remover cafe' })).toHaveCount(0);
+});
+
 test('a faixa de temperatura maior que 3 °C ganha um aviso', async ({ page }) => {
   await page.goto('/#/novo');
   await page.getByRole('button', { name: 'Mostrar grade completa' }).click();

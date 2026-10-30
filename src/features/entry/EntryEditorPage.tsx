@@ -27,7 +27,7 @@ import {
   WINE_STYLES,
   WINE_TYPES,
 } from '../../domain/asi-vocabulary';
-import { AROMA_GROUPS, aromaGroupOf } from '../../domain/aroma-catalog';
+import { AROMA_GROUPS, isCatalogDescriptor } from '../../domain/aroma-catalog';
 import {
   ASI_FIELDS,
   hasAnyContent,
@@ -506,10 +506,10 @@ export const EntryEditorPage: React.FC<EntryEditorPageProps> = ({
             className="flex-1 px-3 py-1.5 text-xs rounded-xs border border-[#cfc4b0] dark:border-[#3d362b] bg-[#fffaf0] dark:bg-[#25221d] text-[#312d26] dark:text-[#eee7db]"
           />
         </div>
-        {selected.some((aroma) => !aromaGroupOf(aroma)) && (
+        {selected.some((aroma) => !isCatalogDescriptor(aroma)) && (
           <div className="flex flex-wrap gap-1">
             {selected
-              .filter((aroma) => !aromaGroupOf(aroma))
+              .filter((aroma) => !isCatalogDescriptor(aroma))
               .map((aroma) => (
                 <button
                   key={aroma}

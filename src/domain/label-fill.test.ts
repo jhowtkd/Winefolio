@@ -99,6 +99,18 @@ describe('proveniência da leitura de rótulo', () => {
     assert.deepStrictEqual([next.tipo, next.estilo, next.skinContact], ['espumante', 'branco', true]);
   });
 
+  it('o contato com as cascas sugerido pela IA aguarda revisão', () => {
+    const filled = applyLabelAnalysis(createEntry('x'), { estilo: 'laranja' });
+    assert.strictEqual(filled.provenance.skinContact, 'ai-unverified');
+    assert.ok(aiSuggestedFields(filled).includes('skinContact'));
+    const white = { ...createEntry('x'), estilo: 'branco' as const };
+    const suggested = applyLabelAnalysis(white, { estilo: 'laranja' });
+    assert.strictEqual(suggested.provenance.skinContact, 'ai-unverified');
+    assert.strictEqual(applyLabelAnalysis(white, { estilo: 'branco' }).provenance.skinContact, undefined);
+    const reviewed = settleAiProvenance({ ...suggested, skinContact: false }, suggested);
+    assert.strictEqual(reviewed.provenance.skinContact, 'user');
+  });
+
   it('campo editado depois da leitura passa a ser da pessoa', () => {
     const filled = applyLabelAnalysis(createEntry('x'), { vinho: 'Reserva', safra: '2020' });
     const edited = { ...filled, vinho: 'Reserva Especial' };

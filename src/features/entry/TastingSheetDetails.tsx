@@ -48,6 +48,7 @@ const AI_FIELD_LABELS: Record<string, string> = {
   regiaoPais: 'região',
   tipo: 'tipo',
   estilo: 'estilo',
+  skinContact: 'contato com cascas',
   'servico.temperature': 'temperatura',
   'servico.decant': 'decantação',
   'visual.corHex': 'cor',

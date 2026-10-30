@@ -152,14 +152,23 @@ export const AROMA_GROUPS: readonly AromaGroup[] = [
   },
 ];
 
-const byDescriptor = new Map<string, AromaGroup>();
-for (const group of AROMA_GROUPS) {
-  for (const descriptor of group.descriptors) byDescriptor.set(descriptor.toLocaleLowerCase('pt-BR'), group);
+function descriptorKey(descriptor: string): string {
+  return descriptor.trim().toLocaleLowerCase('pt-BR').normalize('NFD').replace(/\p{M}/gu, '');
 }
 
-/** O grupo de um descritor, sem diferenciar maiúsculas. Descritor livre não tem grupo. */
+const byDescriptor = new Map<string, AromaGroup>();
+for (const group of AROMA_GROUPS) {
+  for (const descriptor of group.descriptors) byDescriptor.set(descriptorKey(descriptor), group);
+}
+
+/** O grupo de um descritor, sem diferenciar maiúsculas nem acentos. Descritor livre não tem grupo. */
 export function aromaGroupOf(descriptor: string): AromaGroup | undefined {
-  return byDescriptor.get(descriptor.trim().toLocaleLowerCase('pt-BR'));
+  return byDescriptor.get(descriptorKey(descriptor));
+}
+
+/** Escrito como no catálogo. "cafe" tem grupo, mas não é o botão "Café" do editor. */
+export function isCatalogDescriptor(descriptor: string): boolean {
+  return aromaGroupOf(descriptor)?.descriptors.includes(descriptor) ?? false;
 }
 
 /** Agrupa os descritores na ordem do catálogo. Os livres ficam por último, sem grupo. */
