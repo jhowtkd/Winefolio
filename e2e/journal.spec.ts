@@ -110,6 +110,18 @@ test('o passaporte libera os selos das anotações e mantém os exemplos separad
     await expect(tooltip).toBeHidden();
   }
 
+  // A rolagem fecha o popup, passada a guarda de 150 ms que ignora a rolagem do próprio toque.
+  if (isMobile) {
+    await firstSeal.tap();
+  } else {
+    await firstSeal.hover();
+  }
+  await expect(tooltip).toBeVisible();
+  await page.waitForTimeout(200);
+  await page.evaluate(() => window.scrollTo(0, window.scrollY > 0 ? 0 : 40));
+  await expect(tooltip).toBeHidden();
+  await page.mouse.move(0, 0);
+
   // Teste de navegação por teclado dentro do livro e fechamento de tooltip ao virar
   if (isMobile) {
     await firstSeal.tap();
