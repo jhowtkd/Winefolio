@@ -142,6 +142,17 @@ describe('fixed rules', () => {
     assert.strictEqual(state([...three, last], 'tecnica.vertical').earnedByEntryId, last.id);
   });
 
+  it('Nariz enciclopédico reconhece os 18 grupos escritos sem acento', () => {
+    const aromaTags = AROMA_GROUPS.map((group) => group.descriptors[0].normalize('NFD').replace(/\p{M}/gu, '').toLowerCase());
+    assert.strictEqual(state([entry({ aromaTags })], 'tecnica.grupos').earned, true);
+  });
+
+  it('Degustação vertical ignora ano que não é safra', () => {
+    const wines = (safras: string[]) => safras.map((safra) => entry({ produtor: 'Casa', vinho: 'Reserva', safra }));
+    assert.strictEqual(state(wines(['Lote 1999', 'desde 1890', '2020']), 'tecnica.vertical').earned, false);
+    assert.strictEqual(state(wines(['Safra 2018', '2019', 'safra 2020']), 'tecnica.vertical').earned, true);
+  });
+
   it('Degustação vertical não junta vinhos sem produtor pelo nome', () => {
     const unnamed = ['2015', '2016', '2018'].map((safra) => entry({ produtor: '', vinho: 'Reserva', safra }));
     assert.strictEqual(state(unnamed, 'tecnica.vertical').current, 0);
@@ -151,6 +162,11 @@ describe('fixed rules', () => {
     assert.strictEqual(state([entry({ safra: '2006' }, '2026-05-01')], 'tecnica.arqueologo').earned, true);
     assert.strictEqual(state([entry({ safra: '2007' }, '2026-05-01')], 'tecnica.arqueologo').earned, false);
     assert.strictEqual(state([entry({ safra: 'N/V' }, '2026-05-01')], 'tecnica.arqueologo').earned, false);
+    assert.strictEqual(state([entry({ safra: ' 2006 ' }, '2026-05-01')], 'tecnica.arqueologo').earned, true);
+    assert.strictEqual(state([entry({ safra: 'Safra 2006' }, '2026-05-01')], 'tecnica.arqueologo').earned, true);
+    for (const safra of ['Fundada em 1855', 'Lote 2006', 'Casa desde 1890, safra 2020', '1990/1995']) {
+      assert.strictEqual(state([entry({ safra }, '2026-05-01')], 'tecnica.arqueologo').earned, false, safra);
+    }
   });
 
   it('Arco-íris conta o laranja à parte do branco', () => {
@@ -280,6 +296,12 @@ describe('compatibilidade com o Passaporte da main', () => {
     }
   });
 
+  it('skinContact sugerido pela IA deixa os dois lados sem o laranja', () => {
+    const wine = entry({ estilo: 'branco', skinContact: true, provenance: { skinContact: 'ai-unverified' } });
+    assert.strictEqual(state([wine], 'estilo.laranja').earned, false);
+    assert.strictEqual(passportProgress([wine]).milestones.find((m) => m.id === 'estilo.laranja')?.earned, false);
+  });
+
   it('mantém earned dos onze ids em fichas isoladas e combinadas, nos modos pessoal e demo', () => {
     const empty = entry();
     const rich = entry({
@@ -400,6 +422,7 @@ describe('provenance nos marcos novos', () => {
       const wines = ['2000', '2001', '2002'].map((safra) => {
         const wine = entry({ ...rich, safra });
         if (path === 'conclusao.harmonizacao') wine.servico = { ...wine.servico, dishStyle: null };
+        if (path === 'conclusao.vinification') wine.tipo = 'espumante';
         return wine;
       });
       const unverified = new Map(evaluateStamps(wines.map((wine) => ({ ...wine, provenance: { [path]: 'ai-unverified' } }))).map((s) => [s.def.id, s.current]));
@@ -410,6 +433,14 @@ describe('provenance nos marcos novos', () => {
       }
     });
   }
+
+  it('Método tradicional só conta em espumante com tipo revisado', () => {
+    const wine = entry({ ...rich, tipo: 'espumante' });
+    assert.ok(state([wine], 'estilo.tradicional').current > 0);
+    assert.strictEqual(state([{ ...wine, tipo: 'tranquilo' }], 'estilo.tradicional').current, 0);
+    assert.strictEqual(state([{ ...wine, tipo: null }], 'estilo.tradicional').current, 0);
+    assert.strictEqual(state([{ ...wine, provenance: { tipo: 'ai-unverified' } }], 'estilo.tradicional').current, 0);
+  });
 
   it('não atribui defeitos sem revisão, mas aceita um defeito confirmado no outro exame', () => {
     const wine = entry({ ...rich, provenance: { 'olfato.faults': 'ai-unverified', 'paladar.faults': 'ai-unverified' } });

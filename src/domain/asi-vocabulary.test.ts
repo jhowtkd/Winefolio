@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import * as vocabulary from './asi-vocabulary.js';
 import { CORE_COLOURS, FAULTS, NOSE_FAULTS, SUBSTYLE_GROUPS, vinificationFor, type AsiOption } from './asi-vocabulary.js';
-import { AROMA_GROUPS, aromaGroupOf, groupAromas } from './aroma-catalog.js';
+import { AROMA_GROUPS, aromaGroupOf, groupAromas, isCatalogDescriptor } from './aroma-catalog.js';
 
 const lists = (Object.entries(vocabulary) as Array<[string, unknown]>).filter(
   (entry): entry is [string, readonly AsiOption[]] =>
@@ -82,6 +82,27 @@ describe('catálogo de aromas', () => {
       'Frutas escuras', 'Especiarias', 'Cítricos', 'Frutas vermelhas', 'Flores', 'Ervas',
     ];
     for (const descriptor of old) assert.ok(aromaGroupOf(descriptor), descriptor);
+  });
+
+  it('reconhece o descritor escrito sem acento, sem colisão entre grupos', () => {
+    assert.strictEqual(aromaGroupOf('cafe')?.code, aromaGroupOf('Café')?.code);
+    assert.strictEqual(aromaGroupOf('  AVELA ')?.code, aromaGroupOf('Avelã')?.code);
+    assert.strictEqual(aromaGroupOf('Cheiro de casa da avó'), undefined);
+    const groups = new Map<string, string>();
+    for (const group of AROMA_GROUPS) {
+      for (const descriptor of group.descriptors) {
+        const key = descriptor.toLocaleLowerCase('pt-BR').normalize('NFD').replace(/\p{M}/gu, '');
+        assert.strictEqual(groups.get(key) ?? group.code, group.code, descriptor);
+        groups.set(key, group.code);
+      }
+    }
+  });
+
+  it('só o descritor escrito como no catálogo tem botão próprio', () => {
+    assert.strictEqual(isCatalogDescriptor('Café'), true);
+    assert.strictEqual(isCatalogDescriptor('cafe'), false);
+    assert.strictEqual(isCatalogDescriptor('couro'), false);
+    assert.strictEqual(isCatalogDescriptor('Cheiro de casa da avó'), false);
   });
 
   it('agrupa na ordem do catálogo e deixa o descritor livre por último', () => {

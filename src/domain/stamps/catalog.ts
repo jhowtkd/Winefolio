@@ -90,7 +90,8 @@ const isOrange = (e: WineEntry) =>
   e.estilo === 'branco' && e.skinContact === true && trusted(e, 'estilo') && trusted(e, 'skinContact');
 const hasVinification = (code: string) => (e: WineEntry) =>
   trusted(e, 'conclusao.vinification') && (e.conclusao.vinification ?? []).includes(code as never);
-const isTraditional = hasVinification('traditional');
+// Sem tipo, a ficha oferece todas as vinificações; o método clássico é de espumante.
+const isTraditional = (e: WineEntry) => isSparkling(e) && hasVinification('traditional')(e);
 const longAgeing = (e: WineEntry) =>
   (e.conclusao.ageing === '12-15' || e.conclusao.ageing === '15+') && trusted(e, 'conclusao.ageing');
 
@@ -123,10 +124,11 @@ const colours = (e: WineEntry) =>
 const fullService = (e: WineEntry) =>
   trustedFilled(e, 'servico.temperature') && trustedFilled(e, 'servico.glass') && trustedFilled(e, 'servico.decant');
 
-const VINTAGE = /\b(1[89]\d\d|20\d\d)\b/;
+// O campo é texto livre: o ano de "Fundada em 1855" ou "Lote 2006" não é safra.
+const VINTAGE = /^(?:safra\s+)?(1[89]\d\d|20\d\d)$/i;
 function vintageOf(e: WineEntry): number | null {
   if (!trusted(e, 'safra')) return null;
-  const match = (e.safra ?? '').match(VINTAGE);
+  const match = (e.safra ?? '').trim().match(VINTAGE);
   return match ? Number(match[1]) : null;
 }
 const archaeologist = (e: WineEntry) => {
