@@ -36,6 +36,7 @@ export const AI_FILLED_PATHS = [
   'regiaoPais',
   'tipo',
   'estilo',
+  'skinContact',
   'servico.temperature',
   'servico.decant',
   'visual.corHex',
@@ -58,6 +59,9 @@ function markChanged(before: WineEntry, after: WineEntry): WineEntry {
     const value = readPath(after, path);
     if (value !== EMPTY && value !== readPath(before, path)) provenance[path] = 'ai-unverified';
   }
+  // Só "laranja" é afirmação da IA. O false vem do estilo, que já fica pendente, e fora do
+  // branco a ficha nem mostra o botão: o campo ficaria sem revisão possível.
+  if (!after.skinContact && provenance.skinContact === 'ai-unverified') delete provenance.skinContact;
   return { ...after, provenance };
 }
 
