@@ -30,3 +30,8 @@ Feito, conforme `docs/superpowers/plans/2026-09-24-launch-readiness.md`:
 
 Fora desta leva: estoque real de garrafas, service worker offline, fontes servidas pelo próprio app.
 
+## Selos (2026-10-30)
+
+Feito: 11 selos na tela do Passaporte (livro de 3 folhas com arte webp) e domínio dos 233 selos, com testes, na `main`.
+
+Falta: interface dos 233, confirmação dos campos de IA, avisos de selo novo, arte e exportação. Nenhuma dessas partes foi entregue ao usuário.
