@@ -111,6 +111,18 @@ describe('proveniência da leitura de rótulo', () => {
     assert.strictEqual(reviewed.provenance.skinContact, 'user');
   });
 
+  it('tirar o laranja não deixa pendência sem botão para revisar', () => {
+    const orange = { ...createEntry('x'), estilo: 'branco' as const, skinContact: true };
+    const red = applyLabelAnalysis(orange, { estilo: 'tinto' });
+    assert.strictEqual(red.skinContact, false);
+    assert.strictEqual(red.provenance.estilo, 'ai-unverified');
+    assert.strictEqual(red.provenance.skinContact, undefined);
+    assert.ok(!aiSuggestedFields(red).includes('skinContact'));
+
+    const suggested = applyLabelAnalysis(createEntry('x'), { estilo: 'laranja' });
+    assert.strictEqual(applyLabelAnalysis(suggested, { estilo: 'tinto' }).provenance.skinContact, undefined);
+  });
+
   it('campo editado depois da leitura passa a ser da pessoa', () => {
     const filled = applyLabelAnalysis(createEntry('x'), { vinho: 'Reserva', safra: '2020' });
     const edited = { ...filled, vinho: 'Reserva Especial' };
