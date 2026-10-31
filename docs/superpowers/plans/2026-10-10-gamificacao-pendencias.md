@@ -14,7 +14,7 @@
 > | `pais.todos` | Os 13 países das duas listas |
 > | `volume.*` | Conta fichas, não taças; "Primeira taça" e "Mil taças" mantêm o título |
 > | Produtores | Nome dobrado por `fold` |
-> | Grade completa | `isGridComplete` mais `tipo`, `estilo` e `skinContact` confiáveis |
+> | Grade completa | `isGridComplete` mais `tipo`, `estilo` e `skinContact` confiáveis. A `main` ainda não marca `skinContact` vindo da IA; o PR #10 corrige |
 > | Botrytis e método tradicional | Campo de vinificação |
 > | Harmonização | Todos os códigos de `PAIRING_COMPONENTS` (7) e `DISH_STYLE` (3) |
 > | `critica.defeito` | Um defeito em `olfato.faults` ou `paladar.faults` |

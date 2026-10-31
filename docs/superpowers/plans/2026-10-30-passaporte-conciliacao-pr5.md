@@ -10,6 +10,7 @@ Estado em 2026-10-30, com `main` em `7fb200c`. O domínio dos 233 selos está in
 | `catalog.ts`, `normalize.ts` e seus testes | A versão da `main` é mais rígida; reaplicar seria regressão |
 | Mudança de export em `asi-fields.ts` | A `main` já resolve com `isGridComplete` |
 | `PassportPage.tsx` inteira | Reescreve o livro de 3 folhas com arte webp, que mudou na `main` depois da base do #5 |
+| `e2e/label-reading.spec.ts` do #5 | A `main` já tem o arquivo, com o aviso de IA não revisada e o erro HTML; a fatia 2 estende essa versão |
 
 Revisitas não têm fatia própria: a regra já está na `main`. Confirmar leitura de IA não altera a impressão final, portanto não concede revisita; a fatia 2 cobre isso com teste.
 
@@ -17,24 +18,24 @@ Revisitas não têm fatia própria: a regra já está na `main`. Confirmar leitu
 
 ### 0. Estabilizar o E2E
 
-Mergear o PR #8.
+Mergear o PR #8 e fixar `runs-on: ubuntu-24.04` em `.github/workflows/ci.yml`.
 
 **Aceite:** CI verde na `main`.
 
 ### 1. Corrigir regras do domínio
 
-Vem antes da interface porque o ganho de um selo não é gravado: endurecer uma regra depois de exibir os selos faria selos visíveis sumirem.
+Vem antes da interface porque o ganho de um selo não é gravado: endurecer uma regra depois de exibir os selos faria selos visíveis sumirem. Implementada no PR #10, ainda sem merge.
 
 | Item | Correção | Aceite |
 |---|---|---|
 | Método tradicional conta vinho não espumante | `isSparkling(e) && hasVinification('traditional')(e)` em `estilo.tradicional` | Ficha tranquila ou sem tipo com vinificação tradicional não conta |
-| Grupos de aromas dependem de acento | Índice dobrado com `fold` em `aromaGroupOf` | Lista sem acento dá 18/18, como a acentuada |
-| `skinContact` fora de `AI_FILLED_PATHS` | Incluir o caminho e conferir o rótulo em `TastingSheetDetails` | Estilo 'laranja' vindo da IA não ganha selo antes da revisão |
+| Grupos de aromas dependem de acento | Chave sem acento própria em `aroma-catalog.ts`, sem importar `fold` de `stamps/`. `isCatalogDescriptor` mantém "cafe" como aroma livre e removível em `EntryEditorPage` | Lista sem acento dá 18/18, como a acentuada; o editor não esconde o aroma gravado sem acento |
+| `skinContact` fora de `AI_FILLED_PATHS` | Incluir o caminho e conferir o rótulo em `TastingSheetDetails` | Estilo 'laranja' vindo da IA não ganha selo antes da revisão; tirar o laranja não deixa pendência sem botão para revisar |
 | Safra extrai ano de texto livre | Aceitar só texto que seja a safra inteira, com "Safra" opcional | 'Fundada em 1855' e 'Lote 2006' não contam; '1990' e 'Safra 1990' contam; caso ambíguo decidido em teste |
 
 ### 2. Confirmar leitura de IA
 
-Traz `confirmAiFields`, `confirmAiReading`, o botão em `TastingSheetDetails` e `e2e/label-reading.spec.ts`. É independente das outras fatias.
+Traz `confirmAiFields`, `confirmAiReading` e o botão em `TastingSheetDetails`, e estende o `e2e/label-reading.spec.ts` da `main`. É independente das outras fatias.
 
 **Aceite:** a confirmação troca `ai-unverified` por `user` só nos campos lidos; selos passam a contar esses campos; `legado.revisited` não muda; fichas de exemplo não são afetadas.
 
@@ -89,4 +90,4 @@ Traz `scripts/render-stamps.mjs` e o manifest. Vem por último.
 - A evidência de E2E do #5 foi gerada fora do CI e sobre outra base; não vale para as fatias.
 - A arte do #5 é provisória.
 - `output/` não está no `.gitignore` e o teste do Passaporte grava capturas ali.
-- A anotação do CI indica que `ubuntu-latest` migra para o Ubuntu 26 a partir de 2026-10-19. O Playwright 1.56.1 recusou o Chromium em Ubuntu 26.04 numa máquina local; o job atual usou a imagem 24.04.
+- A anotação do CI indica que `ubuntu-latest` migra para o Ubuntu 26 a partir de 2026-10-19. O Playwright 1.56.1 recusou o Chromium em Ubuntu 26.04 numa máquina local; o job atual usou a imagem 24.04, mas nada no repositório o mantém nela; a fatia 0 fixa o rótulo.
