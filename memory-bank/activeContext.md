@@ -19,3 +19,7 @@ Em 2026-09-24 as 10 tarefas do plano de lançamento foram implementadas na branc
 A ficha passou a seguir a Blind Tasting Grid da ASI (formato 3). O campo sensorial grava código estável; o texto antigo que não tem equivalente fica em `legacyNotes`. A migração roda uma vez (`migration:asi-v3`), e quem já tinha fichas começa no nível Avançado. Especificação em `docs/superpowers/specs/2026-09-25-ficha-asi-design.md`.
 
 O projeto usa bun como gerenciador de pacotes (`bun.lock`, formato 2, Bun 1.4). O CI instala com `bun install --frozen-lockfile`; o servidor e os testes continuam no Node 22.
+
+## Passaporte e os 233 selos (2026-10-30)
+
+O PR #7 integrou o domínio dos 233 selos em `src/domain/stamps/`, mas nada na interface usa `evaluateStamps`: a tela do Passaporte segue com os 11 selos de `passportProgress`. O PR #5 está aberto e em conflito; pela issue #6 ele entra em fatias, cada uma com OK próprio, e a sequência está em `docs/superpowers/plans/2026-10-30-passaporte-conciliacao-pr5.md`.
